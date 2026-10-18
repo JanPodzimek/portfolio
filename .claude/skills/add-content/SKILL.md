@@ -19,8 +19,30 @@ Rules:
    request, ask. Never put internal Alza details (system names, data, screenshots) on the site.
 2. Write English first: short sentences, active voice, concrete outcomes. Then write Czech as
    natural Czech, not a literal translation. Use correct typography (`„…“`, `–`, nbsp where needed).
-3. Branch `content/<slug>`. Update or add an e2e assertion if the change is structural (new
-   section, new case study count).
+3. Branch from an up-to-date `develop`:
+   `git switch develop && git pull && git switch -c feat/<slug>` for new content, or
+   `fix/<slug>` for corrections. Update or add an e2e assertion if the change is structural
+   (new section, new case study count).
 4. `npm run verify:fast` (i18n parity and case-study parity tests catch missing translations),
    then a build and a quick look at both `/` and `/cs/`.
-5. Show Jan the final EN and CZ text in the reply so he can approve the wording, then `/review`.
+5. `/review`. Put the final EN and CZ text in the PR body and in the reply, so Jan can correct
+   the wording later with a `fix/` PR.
+6. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
+   verdict without blocker/major findings:
+   ```sh
+   git push -u origin feat/<slug>       # or fix/<slug>
+   gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
+   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr merge --squash --auto --delete-branch
+   gh pr checks --watch --required -i 15
+   gh pr view --json state,mergeStateStatus,mergeCommit
+   git switch develop && git pull
+   ```
+   Wait only with the blocking `gh pr checks --watch`, never with `sleep` (auto mode refuses
+   sleep loops). Right after `gh pr create` it may say "no checks reported": run it again (up to
+   5 times) before treating that as a failure. A red check is an automatic stop: fix it on the
+   same branch (the PR updates), then watch again. Auto-merge completes within seconds of the
+   checks passing, so `gh pr view` should show `MERGED`. If not, do up to 3 rounds of the checks
+   watch plus the view; still not `MERGED` → stop and report the PR URL and its state. `BLOCKED`
+   or `DIRTY` in `mergeStateStatus` means auto-merge cannot finish: stop and report. Releasing to
+   production is a separate step (`/deploy`, only when Jan asks).

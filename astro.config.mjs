@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, envField } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -12,6 +12,17 @@ export default defineConfig({
     locales: ['en', 'cs'],
     defaultLocale: 'en',
     routing: { prefixDefaultLocale: false },
+  },
+  env: {
+    schema: {
+      // Set by Vercel at build time; Base.astro emits it so production can be matched to a commit.
+      VERCEL_GIT_COMMIT_SHA: envField.string({
+        context: 'server',
+        access: 'public',
+        optional: true,
+        default: 'local',
+      }),
+    },
   },
   integrations: [
     sitemap({
