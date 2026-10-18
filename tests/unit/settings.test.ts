@@ -21,10 +21,15 @@ function bashPatterns(rules: string[]) {
 const allow = bashPatterns(settings.permissions.allow);
 const deny = bashPatterns(settings.permissions.deny);
 const matches = (patterns: RegExp[], command: string) => patterns.some((p) => p.test(command));
-const permitted = (command: string) => matches(allow, command) && !matches(deny, command);
+const permitted = (command: string) =>
+  command
+    .split(/&&|\|\||;/)
+    .map((part) => part.trim())
+    .every((part) => matches(allow, part) && !matches(deny, part));
 
-/** The release gate's deployment lookup, with the query in the path instead of `-X GET -f`. */
+/** The deployment lookup the release gate used to run as a raw `gh api` call. */
 const query = 'repos/JanPodzimek/portfolio/deployments?environment=Production&sha=x';
+const sha = '0123456789abcdef0123456789abcdef01234567';
 
 const documented = docs.flatMap((file) =>
   commandsIn(text(file)).map((command) => ({ file, command })),
@@ -35,7 +40,7 @@ describe('.claude/settings.json permissions', () => {
     expect(documented.length).toBeGreaterThan(30);
     expect(documented.map((d) => d.command)).toContain('git push origin v1.2.3');
     expect(documented.map((d) => d.command)).toContain('npm run verify');
-    expect(documented.map((d) => d.command)).toContain(`gh api '${query}' -q '.[0].id'`);
+    expect(documented.map((d) => d.command)).toContain('node scripts/deployment-state.mjs x');
   });
 
   // Auto mode refuses `sleep` loops, so every wait must be a blocking command such as
@@ -66,17 +71,15 @@ describe('.claude/settings.json permissions', () => {
     expect(permitted(command)).toBe(true);
   });
 
-  // The query goes in the path, so no documented call needs a method flag or a field, and the
-  // deny list can reject every non-GET method and every field on deployments outright.
-  it('keeps the gh api deployment calls read-only', () => {
-    const calls = documented.filter((d) => d.command.startsWith('gh api'));
-    expect(calls.length).toBeGreaterThan(0);
-    for (const { command } of calls) {
-      expect(command).toMatch(/deployments/);
-      // `-X` anywhere, not only as a flag: the deny rule `gh api *-X*` would also catch a path
-      // or jq expression containing it.
-      expect(command).not.toMatch(/-X|--method|\s-[fF]|--(raw-)?field|--input/);
-    }
+  // gh groups short flags (`-iXPOST`, `-if ref=main`), so no glob rule can tell a read from a
+  // write. `gh api` is therefore denied outright; the one read the release gate needs lives in
+  // scripts/deployment-state.mjs, which only takes a validated commit sha.
+  it('documents no raw `gh api` command', () => {
+    expect(documented.filter((d) => /^gh api\b/.test(d.command))).toEqual([]);
+  });
+
+  it('allows the deployment-state script for a commit sha', () => {
+    expect(permitted(`node scripts/deployment-state.mjs ${sha}`)).toBe(true);
   });
 
   it.each([
@@ -99,8 +102,13 @@ describe('.claude/settings.json permissions', () => {
     'gh api repos/JanPodzimek/portfolio -X PATCH -f default_branch=main',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q . -f state=success',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses --input status.json',
-    // No documented call sets a method, so -X and --method are denied whatever follows them:
-    // any case, quoted, extra spaces, appended to the allowed query (the last -X wins), even GET.
+    // Every gh api call is denied: any method in any case, quoting or spacing, grouped short
+    // flags, and the former read-only lookups themselves.
+    `gh api '${query}' -q '.[0].id'`,
+    `gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q '.[0].state'`,
+    `gh api '${query}' -q . -iXPOST`,
+    `gh api '${query}' -q . -if ref=main`,
+    'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q . -iF state=success',
     `gh api '${query}' -q '.[0].id' -X Post`,
     `gh api '${query}' -q . -X pAtCh`,
     `gh api '${query}' -q . --method=Delete`,
@@ -138,6 +146,11 @@ describe('.claude/settings.json permissions', () => {
     'gh api repos/JanPodzimek/portfolio/deployments -f ref=main',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -f state=success',
     'gh api repos/JanPodzimek/portfolio/rulesets -X GET',
+    'gh api graphql -f query=x',
+    `gh api '${query}' -q '.[0].id'`,
+    // The script is allowed, but not chained with other commands after it.
+    `node scripts/deployment-state.mjs ${sha} && gh api repos/JanPodzimek/portfolio -X DELETE`,
+    'node scripts/other.mjs x',
     'git push origin main',
     'git push -u origin chore/x',
     // No skill runs curl (the "Production smoke" workflow checks production), so none is allowed.

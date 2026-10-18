@@ -11,7 +11,7 @@ export const concrete = (command: string) =>
     .replace(/<[^>]+>/g, 'x')
     .trim();
 
-/** Commands in fenced `sh` blocks and inline git/gh/curl/npm/npx code, split on `&&`. */
+/** Commands in fenced `sh` blocks and inline git/gh/curl/npm/npx/node code, split on `&&`. */
 export function commandsIn(markdown: string): string[] {
   const commands: string[] = [];
   for (const [, block] of markdown.matchAll(/```sh\n([\s\S]*?)```/g)) {
@@ -20,7 +20,7 @@ export function commandsIn(markdown: string): string[] {
       if (command) commands.push(command);
     }
   }
-  for (const [, inline] of markdown.matchAll(/`((?:git|gh|curl|npm|npx) [^`]+)`/g))
+  for (const [, inline] of markdown.matchAll(/`((?:git|gh|curl|npm|npx|node) [^`]+)`/g))
     commands.push(inline);
   return commands.flatMap((c) => c.split('&&')).map(concrete);
 }
