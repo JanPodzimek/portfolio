@@ -7,10 +7,12 @@ import { checkGitCommand } from './git-policy.mjs';
 
 const input = await readStdinJson();
 const command = String(input?.tool_input?.command ?? '');
+// The Bash tool's working directory; the branch is read there.
+const cwd = typeof input?.cwd === 'string' && input.cwd ? input.cwd : projectDir();
 
 /** @param {string[]} args */
 function git(args) {
-  return execFileSync('git', args, { cwd: projectDir(), stdio: ['ignore', 'pipe', 'ignore'] })
+  return execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'ignore'] })
     .toString()
     .trim();
 }
@@ -30,7 +32,7 @@ function currentBranch() {
 }
 
 if (/\bgit\b/.test(command)) {
-  const error = checkGitCommand(command, currentBranch());
+  const error = checkGitCommand(command, currentBranch(), { projectDir: projectDir(), cwd });
   if (error) {
     process.stderr.write(`Blocked by .claude/hooks/guard-git.mjs: ${error}\n`);
     process.exit(2);

@@ -52,6 +52,10 @@ describe('checkPrBranches', () => {
 });
 
 describe('checkGitCommand', () => {
+  // The hook passes the project dir and the Bash tool's cwd; Git Bash style on purpose.
+  const project = { projectDir: 'C:\\repos\\portfolio', cwd: '/c/repos/portfolio' };
+  const check = (command: string, branch: string) => checkGitCommand(command, branch, project);
+
   it.each([
     ['git commit -m "Add x"', 'feat/x'],
     ['git commit -m "Fix y"', 'fix/typo'],
@@ -108,8 +112,36 @@ describe('checkGitCommand', () => {
     ['git commit -m "wip"', 'HEAD'],
     ['command git commit -m x', 'feat/x'],
     ['env GIT_PAGER=cat git log', 'main'],
+    // wrappers the guard can see through
+    ['time git push origin feat/x', 'feat/x'],
+    ['git commit -m "the git hook blocks git push origin main"', 'feat/x'],
+    ["git log --format='%s' | grep 'git'", 'main'],
+    ['echo "$(git rev-parse HEAD)"', 'main'],
+    ['bash -c "git status"', 'main'],
+    // directories inside the project keep the branch
+    ['cd /c/repos/portfolio && git commit -m x', 'feat/x'],
+    ['cd src && git commit -m x', 'feat/x'],
+    ['cd /tmp && cd C:/repos/portfolio/docs && git commit -m x', 'feat/x'],
+    ['git -C src commit -m x', 'feat/x'],
+    ['git -C /c/repos/portfolio switch -c feat/y && git commit -m x', 'develop'],
+    // rc branches are pushed only from themselves
+    ['git push -u origin rc/v1.1.0', 'rc/v1.1.0'],
+    ['git push', 'rc/v1.1.0'],
+    ['git push origin HEAD', 'rc/v1.1.0'],
+    ['git push origin rc/v1.1.0:rc/v1.1.0', 'develop'],
+    // attached option forms with valid names
+    ['git switch --create=feat/y', 'develop'],
+    ['git switch -cfix/y', 'develop'],
+    ['git checkout -bfeat/y', 'develop'],
+    // unstaging on protected branches
+    ['git reset', 'develop'],
+    ['git reset -q', 'main'],
+    ['git reset -- src/i18n/en.ts', 'develop'],
+    ['git reset src/i18n/en.ts README.md', 'develop'],
+    ['git reset HEAD -- README.md', 'main'],
+    ['git reset .', 'rc/v1.1.0'],
   ])('allows `%s` on %s', (command, branch) => {
-    expect(checkGitCommand(command, branch)).toBeNull();
+    expect(check(command, branch)).toBeNull();
   });
 
   it.each([
@@ -164,6 +196,61 @@ describe('checkGitCommand', () => {
     ['git cherry-pick abc123', 'main', /do not cherry-pick on main/],
     ['git rebase main', 'develop', /do not rebase on develop/],
     ['git reset HEAD~1', 'develop', /do not reset on develop/],
+    ['git reset --soft HEAD~1', 'develop', /do not reset on develop/],
+    ['git reset --mixed origin/main', 'main', /do not reset on main/],
+    ['git reset --hard', 'main', /do not reset on main/],
+    ['git reset --keep feat/x', 'develop', /do not reset on develop/],
+    ['git reset abc1234', 'develop', /do not reset on develop/],
+    ['git reset Makefile', 'develop', /do not reset on develop/],
+    ['git reset HEAD@{1}', 'develop', /do not reset on develop/],
+    ['git reset v1.0.0 -- src', 'main', /do not reset on main/],
+    // git hidden behind wrappers and substitutions
+    ['time git push origin main', 'feat/x', /do not push to main/],
+    ['nohup git push origin develop', 'feat/x', /do not push to develop/],
+    ['xargs git push origin main', 'feat/x', /do not push to main/],
+    ['xargs -n 1 -I {} git push origin main', 'feat/x', /do not push to main/],
+    ['if git commit -m x; then :; fi', 'develop', /do not commit on develop/],
+    ['! git commit -m x', 'develop', /do not commit on develop/],
+    ['{ git commit -m x; }', 'develop', /do not commit on develop/],
+    ['( git commit -m x )', 'develop', /do not commit on develop/],
+    ['exec git commit -m x', 'develop', /do not commit on develop/],
+    ['echo $(git commit -m x)', 'develop', /do not commit on develop/],
+    ['echo `git commit -m x`', 'develop', /do not commit on develop/],
+    ['echo "$(git commit -m x)"', 'develop', /do not commit on develop/],
+    ['echo "`git push origin main`"', 'feat/x', /do not push to main/],
+    ['bash -c "git commit -m x"', 'develop', /do not commit on develop/],
+    ["sh -c 'cd src && git push origin develop'", 'feat/x', /do not push to develop/],
+    ['bash -lc "git commit -m x"', 'develop', /do not commit on develop/],
+    ['eval "git commit -m x"', 'develop', /do not commit on develop/],
+    ['sudo git commit -m x', 'feat/x', /run git as a plain command/],
+    ['find . -name x -exec git add {} ;', 'feat/x', /run git as a plain command/],
+    ['/usr/bin/env -S git commit -m x', 'feat/x', /run git as a plain command/],
+    ['watch /usr/bin/git status', 'feat/x', /run git as a plain command/],
+    ['powershell git.exe push origin main', 'feat/x', /run git as a plain command/],
+    // directories outside the project: branch unknown
+    ['cd /tmp/other && git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['cd .. && git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['cd ~ && git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['cd "$REPO" && git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['cd src; git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['git -C ../other commit -m x', 'feat/x', /cannot tell which branch/],
+    ['git -C /tmp/other push', 'feat/x', /cannot tell which branch/],
+    ['git --git-dir=/tmp/x/.git commit -m x', 'feat/x', /cannot tell which branch/],
+    ['git -C ../other switch feat/y && git commit -m x', 'feat/x', /cannot tell which branch/],
+    // rc branches only receive their own branch
+    ['git push origin feat/x:rc/v1.2.0', 'feat/x', /rc\/v1\.2\.0 may only be pushed from/],
+    ['git push origin HEAD:rc/v1.1.0', 'feat/x', /rc\/v1\.1\.0 may only be pushed from/],
+    ['git push origin develop:refs/heads/rc/v1.1.0', 'develop', /may only be pushed from/],
+    ['git push origin --delete rc/v1.1.0', 'develop', /do not delete release branches/],
+    ['git push origin :rc/v1.1.0', 'develop', /do not delete release branches/],
+    // attached option forms are validated too
+    ['git switch --create=content/x', 'develop', /"content\/x" is not an allowed branch name/],
+    ['git switch --force-create=develop', 'feat/x', /"develop" is not an allowed branch name/],
+    ['git switch --orphan=tmp', 'feat/x', /"tmp" is not an allowed branch name/],
+    ['git switch -ccontent/x', 'develop', /"content\/x" is not an allowed branch name/],
+    ['git checkout -bcontent/x', 'develop', /"content\/x" is not an allowed branch name/],
+    ['git checkout -Bmain', 'feat/x', /"main" is not an allowed branch name/],
+    ['git checkout --orphan=gh-pages', 'feat/x', /"gh-pages" is not an allowed branch name/],
     ['git am patch.mbox', 'rc/v1.1.0', /do not am on rc\/v1\.1\.0/],
     ['git revert abc123', 'main', /do not revert on main/],
     ['git merge develop', 'rc/v1.1.0', /do not merge on rc\/v1\.1\.0/],
@@ -180,7 +267,7 @@ describe('checkGitCommand', () => {
     ['git push origin feat/x:refs/tags/v9.9.9', 'feat/x', /not allowed/],
     ['git push origin :', 'feat/x', /every matching branch/],
   ])('blocks `%s` on %s', (command, branch, message) => {
-    expect(checkGitCommand(command, branch)).toMatch(message);
+    expect(check(command, branch)).toMatch(message);
   });
 });
 
@@ -221,4 +308,30 @@ describe('planPrCheck', () => {
       expect(plan.message).toMatch(/PR_HEAD_SHA/);
     },
   );
+});
+
+describe('checkGitCommand without a project context', () => {
+  it('uses the given branch for commands in the starting directory', () => {
+    expect(checkGitCommand('git commit -m x', 'develop')).toMatch(/do not commit on develop/);
+    expect(checkGitCommand('git commit -m x', 'feat/x')).toBeNull();
+  });
+
+  it('treats any cd as leaving the repository (fail closed)', () => {
+    expect(checkGitCommand('cd src && git commit -m x', 'feat/x')).toMatch(/cannot tell/);
+  });
+});
+
+describe('checkGitCommand with a cwd outside the project', () => {
+  const context = { projectDir: '/home/jan/portfolio', cwd: '/home/jan/other' };
+
+  it('tracks the branch of the starting directory, not the project', () => {
+    expect(checkGitCommand('git commit -m x', 'feat/x', context)).toBeNull();
+    expect(checkGitCommand('cd sub && git commit -m x', 'feat/x', context)).toBeNull();
+  });
+
+  it('treats cd into the project as a different repository', () => {
+    expect(checkGitCommand('cd /home/jan/portfolio && git commit -m x', 'feat/x', context)).toMatch(
+      /cannot tell/,
+    );
+  });
 });

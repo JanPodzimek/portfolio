@@ -13,9 +13,9 @@ let root: string;
 let repoOnDevelop: string;
 let notARepo: string;
 
-function runHook(projectDir: string, command: string) {
+function runHook(projectDir: string, command: string, cwd?: string) {
   const result = spawnSync(process.execPath, [hook], {
-    input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
+    input: JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd }),
     env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, GIT_CEILING_DIRECTORIES: root },
     encoding: 'utf8',
   });
@@ -45,6 +45,18 @@ describe('guard-git hook', () => {
 
   it('allows commands that are not git', () => {
     expect(runHook(repoOnDevelop, 'npm run verify').code).toBe(0);
+  });
+
+  it('reads the branch from the hook input cwd, not only the project dir', () => {
+    const { code, stderr } = runHook(notARepo, 'git commit -m x', repoOnDevelop);
+    expect(code).toBe(2);
+    expect(stderr).toMatch(/do not commit on develop/);
+  });
+
+  it('treats a cd out of the project as an unknown branch', () => {
+    const { code, stderr } = runHook(repoOnDevelop, `cd "${notARepo}" && git commit -m x`);
+    expect(code).toBe(2);
+    expect(stderr).toMatch(/cannot tell which branch/);
   });
 
   it('fails closed when the current branch cannot be read', () => {
