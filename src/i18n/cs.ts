@@ -5,7 +5,7 @@ export const cs: Dict = {
   meta: {
     homeTitle: 'Jan Podzimek · QA Engineer',
     homeDescription:
-      'QA engineer v Alza.cz se zaměřením na automatizaci API testů v C#, testování s pomocí AI a nástroje pro release.',
+      'QA engineer ve společnosti Alza.cz se zaměřením na automatizaci API testů v C#, testování s pomocí AI a nástroje pro release.',
     toolsTitle: 'QA nástroje · Jan Podzimek',
     toolsDescription:
       'Malé otestované nástroje pro každodenní testování. Zdarma přímo v prohlížeči.',
@@ -16,11 +16,9 @@ export const cs: Dict = {
   },
   nav: {
     skipToContent: 'Přejít na obsah',
-    home: 'Úvod',
     about: 'O mně',
     work: 'Práce',
     tools: 'Nástroje',
-    skills: 'Dovednosti',
     contact: 'Kontakt',
     menu: 'Hlavní navigace',
     themeToggle: 'Přepnout tmavý režim',
@@ -39,9 +37,9 @@ export const cs: Dict = {
   about: {
     title: 'O mně',
     paragraphs: [
-      'Jsem QA engineer v Alza.cz, ve čtyřčlenném QA týmu, který pokrývá dvě webové aplikace. Za čtyři roky jsem testoval frontend, backend, integrace i end-to-end scénáře a přizpůsobím se tomu, co práce zrovna potřebuje.',
-      'Testuji kontextově. Kritické myšlení, průzkum a analýzu v reálném čase stavím nad rigidní scénáře a volím techniku podle situace, místo abych slepě procházel předem připravené testovací případy.',
-      'Nemám rád dělení testerů na „manuální“ a „automatizační“. Dobré testování kombinuje přemýšlení, zkoumání a chytré použití nástrojů. Velkou část mých nástrojů dnes tvoří AI agenti, které jsem sám navrhl a postavil.',
+      'Jsem QA engineer ve společnosti Alza.cz, ve čtyřčlenném QA týmu, který pokrývá dvě webové aplikace. Za čtyři roky jsem testoval frontend, backend, integrace i end-to-end scénáře a přizpůsobím se tomu, co práce zrovna potřebuje.',
+      'Testuji podle kontextu. Kritické myšlení, průzkum a analýzu za běhu upřednostňuji před pevnými scénáři a techniku volím podle situace, místo abych slepě procházel předem připravené testovací případy.',
+      'Nemám rád dělení testerů na „manuální“ a „automatizované“. Dobré testování kombinuje přemýšlení, zkoumání a chytré použití nástrojů. Velkou část mých nástrojů dnes tvoří AI agenti, které jsem sám navrhl a postavil.',
     ],
   },
   experience: {
@@ -53,35 +51,35 @@ export const cs: Dict = {
     highlights: [
       {
         label: 'Testování s pomocí AI',
-        text: 'navrhl a nastavil vlastní agenty v GitHub Copilotu (testový analytik, návrhář testů, autor dokumentace), kteří připravují testové analýzy, testovací scénáře a dokumentaci aplikace.',
+        text: 'navrhl jsem a nastavil vlastní agenty v GitHub Copilotu (testový analytik, návrhář testů, autor dokumentace), kteří připravují testové analýzy, testovací scénáře a dokumentaci aplikace.',
       },
       {
         label: 'Framework pro API testy',
-        text: 'od nuly postavil první API testovací framework týmu v C# a NUnit, který běží v CI pipeline v Azure DevOps.',
+        text: 'od nuly jsem postavil první API testovací framework týmu v C# a NUnit, který běží v CI pipeline v Azure DevOps.',
       },
       {
         label: 'Automatizace releasu',
-        text: 'navrhl interní nástroj a postavil ho pomocí agentního programování. Z velké části nahradil ruční proces releasu.',
+        text: 'navrhl jsem interní nástroj a postavil ho pomocí agentního programování. Z velké části nahradil ruční proces releasu.',
       },
       {
         label: 'Nástroje pro každodenní QA',
-        text: 'nasazení libovolné feature větve na zvolené testovací prostředí na požádání a další pomůcky pro každodenní testování, které používá celý QA tým.',
+        text: 'nástroj jsem rozšířil o nasazení libovolné feature větve na zvolené testovací prostředí a o pomůcky pro každodenní testování, které používá celý QA tým.',
       },
       {
-        label: 'Testová analýza a exekuce',
+        label: 'Testová analýza a provádění testů',
         text: 'hodnotím nové funkce, provádím funkční a regresní testy a ověřuji data a integrace pomocí MS SQL, Kibany a RabbitMQ.',
       },
       {
         label: 'Release management',
         text: 'koordinuji releasy a sleduji nasazení a stabilitu produkce (Argo CD, Kibana).',
       },
-      { label: 'Mentoring', text: 'onboarding buddy pro nové členy týmu.' },
+      { label: 'Mentoring', text: 'jsem onboarding buddy pro nové členy týmu.' },
     ],
   },
   caseStudies: {
     title: 'Vybraná práce',
     intro:
-      'Tři věci, které jsem postavil v práci. Interní detaily jsem vynechal, problém, přístup i výsledek jsou skutečné.',
+      'Tři věci, které jsem postavil v práci. Interní detaily jsem vynechal; problém, přístup i výsledek jsou skutečné.',
     problem: 'Problém',
     approach: 'Přístup',
     result: 'Výsledek',
@@ -102,7 +100,7 @@ export const cs: Dict = {
       },
       {
         title: 'Analýza chování',
-        text: 'Chybná nastavení, nevalidní data a nezamýšlené použití. Jak funkce selže a selže bezpečně?',
+        text: 'Chybná nastavení, nevalidní data a nezamýšlené použití. Jak funkce selhává a je to selhání bezpečné?',
       },
       {
         title: 'Závislosti a vazby',
@@ -213,7 +211,7 @@ export const cs: Dict = {
   built: {
     title: 'Jak vznikl tento web',
     intro:
-      'Tento web je zároveň ukázkou práce. Postavil jsem ho v Claude Code stejným agentním workflow, jaké používám v práci. Takhle funguje.',
+      'Tento web je zároveň ukázkou práce. Postavil jsem ho v Claude Code stejným agentním workflow, jaké používám v práci. Takhle to funguje.',
     sections: [
       {
         title: 'Cíl',
@@ -221,7 +219,7 @@ export const cs: Dict = {
       },
       {
         title: 'Pravidla projektu (CLAUDE.md)',
-        text: 'Soubor, který si agent přečte na začátku každé session. Popisuje architekturu, technologie a proč byly zvoleny, a pevná pravidla: každá změna má test, každý text existuje anglicky i česky, žádná nová závislost bez důvodu, kontroly přístupnosti musí projít a nic nejde do main bez review.',
+        text: 'Soubor, který si agent přečte na začátku každé session. Popisuje architekturu, zvolené technologie i důvody jejich volby a pevná pravidla: každá změna má test, každý text existuje anglicky i česky, žádná nová závislost bez důvodu, kontroly přístupnosti musí projít a nic nejde do main bez review.',
       },
       {
         title: 'Dva agenti, dvě role',
@@ -236,7 +234,7 @@ export const cs: Dict = {
         text: 'Některá pravidla jsou příliš důležitá na to, aby zůstala jen v instrukcích. Hooky naformátují každý upravený soubor, zablokují push do main a spustí kontroly dřív, než agent smí říct, že je hotovo.',
       },
       {
-        title: 'Quality gates',
+        title: 'Kontroly kvality',
         text: 'Každý pull request v GitHub Actions spustí linting, kontrolu typů, unit testy (Vitest), produkční build a UI testy včetně přístupnosti (Playwright + axe) na desktopu i mobilu. Vercel nasadí náhled každého pull requestu.',
       },
     ],
@@ -267,7 +265,7 @@ export const cs: Dict = {
     columnDelimiter: {
       title: 'Oddělovač sloupce',
       description:
-        'Vložte jeden záznam na řádek a získejte je spojené do seznamu, např. pro SQL klauzuli IN nebo filtr v Jira JQL.',
+        'Vložte záznamy, každý na samostatný řádek, a nástroj je spojí do seznamu, např. pro SQL klauzuli IN nebo filtr v Jira JQL.',
       input: 'Data ve sloupci',
       inputPlaceholder: 'Jeden záznam na řádek',
       output: 'Oddělená data',

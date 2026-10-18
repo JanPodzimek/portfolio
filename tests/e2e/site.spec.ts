@@ -1,23 +1,38 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Homepage', () => {
-  test('presents the name, role and all main sections', async ({ page }) => {
-    await page.goto('/');
-    await expect(page).toHaveTitle(/Jan Podzimek/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Jan Podzimek');
-    for (const id of ['about', 'experience', 'work', 'how-i-test', 'tools', 'skills', 'contact']) {
-      await expect(page.locator(`section#${id}`)).toBeAttached();
-    }
-    await expect(page.getByTestId('case-study')).toHaveCount(3);
-  });
+  for (const { path, lang, about } of [
+    { path: '/', lang: 'en', about: 'About me' },
+    { path: '/cs/', lang: 'cs', about: 'O mně' },
+  ]) {
+    test(`${path} presents the name, role and all main sections`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator('html')).toHaveAttribute('lang', lang);
+      await expect(page).toHaveTitle(/Jan Podzimek/);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Jan Podzimek');
+      await expect(page.getByRole('heading', { level: 2, name: about })).toBeVisible();
+      for (const id of [
+        'about',
+        'experience',
+        'work',
+        'how-i-test',
+        'tools',
+        'skills',
+        'contact',
+      ]) {
+        await expect(page.locator(`section#${id}`)).toBeAttached();
+      }
+      await expect(page.getByTestId('case-study')).toHaveCount(3);
+    });
 
-  test('offers a CV that actually downloads', async ({ page, request }) => {
-    await page.goto('/');
-    const href = await page.getByTestId('cv-download').getAttribute('href');
-    const response = await request.get(href!);
-    expect(response.ok()).toBe(true);
-    expect(response.headers()['content-type']).toContain('pdf');
-  });
+    test(`${path} offers a CV that actually downloads`, async ({ page, request }) => {
+      await page.goto(path);
+      const href = await page.getByTestId('cv-download').getAttribute('href');
+      const response = await request.get(href!);
+      expect(response.ok()).toBe(true);
+      expect(response.headers()['content-type']).toContain('pdf');
+    });
+  }
 
   test('links to working certificate PDFs', async ({ page, request }) => {
     await page.goto('/');
@@ -107,6 +122,10 @@ test.describe('Other pages', () => {
     const response = await page.goto('/this-does-not-exist/');
     expect(response?.status()).toBe(404);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+    // There is no Czech 404 page: the language switch goes to the Czech homepage.
+    await expect(page.getByTestId('lang-switch')).toHaveAttribute('href', '/cs/');
   });
 
   test('a skip link lets keyboard users jump to the content', async ({ page }) => {

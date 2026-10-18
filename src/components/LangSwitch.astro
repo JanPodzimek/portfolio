@@ -8,10 +8,12 @@ interface Props {
 const { locale } = Astro.props;
 const target: Locale = locale === 'en' ? 'cs' : 'en';
 const dict = t(locale);
+// The 404 page has no Czech twin; send the visitor to the Czech homepage instead.
+const path = Astro.url.pathname.startsWith('/404') ? '/' : Astro.url.pathname;
 ---
 
 <a
-  href={switchLocalePath(Astro.url.pathname, target)}
+  href={switchLocalePath(path, target)}
   hreflang={target}
   lang={target}
   aria-label={`${dict.nav.langSwitchShort} – ${dict.nav.langSwitchLabel}`}

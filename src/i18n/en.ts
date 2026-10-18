@@ -17,11 +17,9 @@ export const en = {
   },
   nav: {
     skipToContent: 'Skip to content',
-    home: 'Home',
     about: 'About',
     work: 'Work',
     tools: 'Tools',
-    skills: 'Skills',
     contact: 'Contact',
     menu: 'Main navigation',
     themeToggle: 'Toggle dark mode',
