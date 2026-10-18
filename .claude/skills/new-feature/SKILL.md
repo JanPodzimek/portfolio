@@ -11,7 +11,7 @@ argument-hint: <what to build>
    before building.
 2. **Delegate implementation to the `implementer` agent** with the plan and the acceptance
    criteria. It works on a `feat/<slug>` branch created from an up-to-date `develop`
-   (`git switch develop && git pull`, then `git switch -c feat/<slug>` as a separate command).
+   (`git switch develop && git pull && git switch -c feat/<slug>`).
 3. Checklist the implementer must satisfy:
    - [ ] Unit tests for new logic in `tests/unit/`, e2e tests for new behaviour in `tests/e2e/`
    - [ ] All new text in `src/i18n/en.ts` and `src/i18n/cs.ts`

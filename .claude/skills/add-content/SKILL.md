@@ -19,9 +19,8 @@ Rules:
    request, ask. Never put internal Alza details (system names, data, screenshots) on the site.
 2. Write English first: short sentences, active voice, concrete outcomes. Then write Czech as
    natural Czech, not a literal translation. Use correct typography (`„…“`, `–`, nbsp where needed).
-3. Branch from an up-to-date `develop`: `git switch develop && git pull`, then, as a separate
-   command, `git switch -c feat/<slug>` for new content or `git switch -c fix/<slug>` for
-   corrections. Update or add an e2e assertion if the change is structural (new section, new
+3. Branch from an up-to-date `develop`: `git switch develop && git pull && git switch -c
+feat/<slug>` for new content, or `fix/<slug>` for corrections. Update or add an e2e assertion if the change is structural (new section, new
    case study count).
 4. `npm run verify:fast` (i18n parity and case-study parity tests catch missing translations),
    then a build and a quick look at both `/` and `/cs/`.

@@ -14,9 +14,8 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
    `src/components/*.astro` for sections). If the task is ambiguous in a way that changes the
    result, stop and ask instead of guessing.
 2. **Branch.** If not already on a work branch, create one from an up-to-date `develop`:
-   `git switch develop && git pull`, then `git switch -c feat/<slug>` as a separate command
-   (`fix/<slug>` for bugs and corrections, `feat/tool-<slug>` for new tools). The guard hook
-   rejects other names.
+   `git switch develop && git pull && git switch -c feat/<slug>` (`fix/<slug>` for bugs and
+   corrections, `feat/tool-<slug>` for new tools). The guard hook rejects other names.
 3. **Test first where it is cheap.** For bug fixes always: write the failing test, run it, see it
    fail for the right reason. For logic, write the Vitest cases alongside the code.
 4. **Implement** the smallest change that satisfies the task, matching surrounding code style.

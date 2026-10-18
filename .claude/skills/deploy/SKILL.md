@@ -19,7 +19,9 @@ develop ──merge commit──▶ rc/vX.Y.Z ──merge commit──▶ main �
 1. **Preconditions.** `git fetch origin`. Working tree clean; `develop` has commits that are not
    in `main` (`git log --oneline origin/main..origin/develop` is not empty); CI is green on the
    latest `develop` commit. If not, stop and say what is missing.
-2. **Choose the version.** Latest release: `git describe --tags --abbrev=0 origin/main`. Read
+2. **Choose the version.** Latest release: `git describe --tags --abbrev=0 origin/main`; if
+   there is no tag yet, the previous version is `v1.0.0` (Jan tags the production commit
+   `8477302` as `v1.0.0` during the one-time bootstrap, see `docs/agentic-workflow.md`). Read
    `git log --oneline origin/main..origin/develop` (squash commits carry the PR title; check the
    PR branches if unsure): any `feat` → bump minor (`v1.1.0` → `v1.2.0`), fixes only → bump
    patch (`v1.1.0` → `v1.1.1`). Tell Jan the version and the list of changes.

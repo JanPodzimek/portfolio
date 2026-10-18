@@ -23,9 +23,9 @@ Steps:
 
 1. Agree the behaviour with Jan as a short spec: inputs, options, outputs, edge cases. Edge
    cases become unit tests.
-2. Delegate to the `implementer` agent on `feat/tool-<slug>` (created from an up-to-date `develop`:
-   `git switch develop && git pull`, then `git switch -c feat/tool-<slug>` as a separate command)
-   with the spec and the table above.
+2. Delegate to the `implementer` agent on `feat/tool-<slug>`, created from an up-to-date
+   `develop` (`git switch develop && git pull && git switch -c feat/tool-<slug>`), with the spec
+   and the table above.
 3. Requirements: runs fully in the browser (nothing sent anywhere), works from the keyboard,
    output has a copy button if it is text, `data-testid` prefix unique to the tool.
 4. `tests/unit/content.test.ts` checks the registry, routes and test files exist, so it fails

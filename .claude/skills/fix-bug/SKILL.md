@@ -12,9 +12,8 @@ Write the bug down like a good bug report before touching code:
 **Steps:** … **Expected:** … **Actual:** … **Where:** page/locale/viewport/theme
 ```
 
-1. **Reproduce.** On a `fix/<slug>` branch (from an up-to-date `develop`:
-   `git switch develop && git pull`, then `git switch -c fix/<slug>` as a separate command),
-   write the smallest test that fails because of the bug: Vitest if the cause is in
+1. **Reproduce.** On a `fix/<slug>` branch from an up-to-date `develop`
+   (`git switch develop && git pull && git switch -c fix/<slug>`), write the smallest test that fails because of the bug: Vitest if the cause is in
    `src/lib/**` or `src/i18n/utils.ts`, Playwright otherwise. Run it and confirm it fails
    **for the reason in the report**. If you cannot reproduce it, stop and tell Jan what you
    tried.

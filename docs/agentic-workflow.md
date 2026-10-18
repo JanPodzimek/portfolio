@@ -44,8 +44,13 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
 - Versioning is semver, starting at `v1.0.0`: a release with any `feat` bumps minor, fixes only
   bump patch.
 - Enforced by `.claude/hooks/guard-git.mjs` locally and the CI `branch-policy` job on PRs, both
-  using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`).
-  GitHub branch protection should additionally require the CI checks and restrict merge methods.
+  using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts` and `tests/unit/guardGitHook.test.ts`).
+  GitHub rulesets enforce the merge methods (see bootstrap).
+
+**Bootstrap (one-time, Jan on GitHub):** create `develop` from `main`; tag the current
+production commit `8477302` as `v1.0.0`; make `develop` the default branch; add rulesets:
+`main` merge commit only and branch must be up to date, `develop` squash only, `rc/v*` merge
+commit only, and required status checks `verify` and `branch-policy` on all three.
 
 ## Why two agents
 
@@ -73,11 +78,11 @@ against a fixed checklist. It's the same separation of duties a QA team has with
 
 ## Hooks
 
-| Event                    | Script                             | Effect                                                                                  |
-| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------- |
-| PreToolUse (Bash)        | `.claude/hooks/guard-git.mjs`      | Enforces branch names; no commits/merges/pushes on main, develop, rc/*; no force pushes |
-| PostToolUse (Edit/Write) | `.claude/hooks/format-file.mjs`    | Formats the edited file with Prettier                                                   |
-| Stop                     | `.claude/hooks/verify-on-stop.mjs` | If code changed, runs `verify:fast`; on failure Claude must keep working                |
+| Event                    | Script                             | Effect                                                                                                                                      |
+| ------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| PreToolUse (Bash)        | `.claude/hooks/guard-git.mjs`      | Enforces branch names; on main, develop, rc/* only fast-forward updates (no commit, merge, rebase, push…); no force pushes, no tag deletion |
+| PostToolUse (Edit/Write) | `.claude/hooks/format-file.mjs`    | Formats the edited file with Prettier                                                                                                       |
+| Stop                     | `.claude/hooks/verify-on-stop.mjs` | If code changed, runs `verify:fast`; on failure Claude must keep working                                                                    |
 
 ## Personal settings
 
