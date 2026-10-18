@@ -1,7 +1,7 @@
 // The pure parts of scripts/deployment-state.mjs: the only input that reaches `gh` is a commit
 // sha, so it must be exactly 40 lower-case hex characters, and the deployment id gh returns
 // must be numeric before it goes into the second path.
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import {
   copyFileSync,
@@ -110,20 +110,29 @@ describe('deployment-state: command line', () => {
 // runs exactly these two read-only calls and prints their result. No test-only switch in the
 // script: it still runs the plain `gh` from PATH, as in production.
 describe('deployment-state: calls to gh', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'fake-gh-'));
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  let dir = '';
 
-  // A symlink is enough where allowed; Windows without developer mode needs a hard link or copy.
-  const gh = join(dir, process.platform === 'win32' ? 'gh.exe' : 'gh');
-  try {
-    symlinkSync(process.execPath, gh);
-  } catch {
+  // Set up in beforeAll, not at collection time, so a failing link is a failed test.
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'fake-gh-'));
+    // A symlink is enough where allowed; Windows without developer mode needs a hard link.
+    const gh = join(dir, process.platform === 'win32' ? 'gh.exe' : 'gh');
     try {
-      linkSync(process.execPath, gh);
+      symlinkSync(process.execPath, gh);
     } catch {
-      copyFileSync(process.execPath, gh);
+      try {
+        linkSync(process.execPath, gh);
+      } catch {
+        // Last resort, in practice Windows only (Linux CI takes the symlink): when neither a
+        // symlink nor a hard link is possible, e.g. node on another volume, copy the node
+        // binary (~100 MB). It is removed again in afterAll.
+        copyFileSync(process.execPath, gh);
+      }
     }
-  }
+  });
+  afterAll(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  });
 
   function run(args: string[], extraEnv: Record<string, string> = {}) {
     const log = join(dir, 'calls.jsonl');
