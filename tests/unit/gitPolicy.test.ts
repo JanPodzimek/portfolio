@@ -65,6 +65,21 @@ describe('checkGitCommand', () => {
     ['git push origin HEAD', 'fix/typo'],
     ['git push -u origin rc/v1.1.0', 'develop'],
     ['git push origin v1.1.0', 'main'],
+    ['git push origin v1.1.0', 'develop'],
+    ['git push origin v1.1.0', 'feat/x'],
+    // the exact /deploy chains
+    ['git fetch origin && git tag v1.1.0 origin/main && git push origin v1.1.0', 'develop'],
+    ['git fetch origin && git tag v1.1.0 origin/main && git push origin v1.1.0', 'main'],
+    ['git fetch origin && git tag v1.1.0 origin/main && git push origin v1.1.0', 'rc/v1.1.0'],
+    [
+      'git fetch origin && git switch -c rc/v1.1.0 origin/main && git push -u origin rc/v1.1.0',
+      'develop',
+    ],
+    ['git fetch origin --tags', 'develop'],
+    ['git rev-list origin/main..origin/develop', 'develop'],
+    ['git describe --tags --abbrev=0 origin/main', 'develop'],
+    // the work-PR finish
+    ['git push -u origin feat/x', 'feat/x'],
     ['git push origin --tags', 'develop'],
     ['git push origin refs/tags/v1.1.0:refs/tags/v1.1.0', 'develop'],
     ['git tag v1.1.0 origin/main', 'develop'],
