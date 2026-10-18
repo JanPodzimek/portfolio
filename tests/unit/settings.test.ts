@@ -140,7 +140,10 @@ describe('.claude/settings.json permissions', () => {
     'gh api repos/JanPodzimek/portfolio/rulesets -X GET',
     'git push origin main',
     'git push -u origin chore/x',
+    // No skill runs curl (the "Production smoke" workflow checks production), so none is allowed.
     'curl -sI https://example.com/',
+    'curl -sI https://portfolio-v2-sigma-two.vercel.app/',
+    'curl -sI https://portfolio-v2-sigma-two.vercel.app/cs/',
   ])('does not allow `%s` without a prompt', (command) => {
     expect(permitted(command)).toBe(false);
   });
