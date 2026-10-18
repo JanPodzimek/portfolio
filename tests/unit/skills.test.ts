@@ -65,6 +65,14 @@ describe('skills: merging a PR', () => {
     expect(bullet(file, 'UNSTABLE')).toMatch(/fail/i);
   });
 
+  // Without a cap, a check that stays pending (e.g. a stuck Vercel preview) loops forever.
+  it.each(mergeSkills)('%s: BLOCKED and UNSTABLE retry at most 5 times, then stop', (file) => {
+    for (const state of ['BLOCKED', 'UNSTABLE']) {
+      expect(bullet(file, state), state).toMatch(/up to 5\s+times/);
+      expect(bullet(file, state), state).toMatch(/stop and\s+report/i);
+    }
+  });
+
   it.each(mergeSkills)('%s: BLOCKED checks the required checks before stopping', (file) => {
     expect(checksIn(bullet(file, 'BLOCKED')).some((c) => c.includes('--required'))).toBe(true);
   });
