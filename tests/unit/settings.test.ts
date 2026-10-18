@@ -4,9 +4,9 @@
 // rules (`*` matches anything; each part of an `&&` chain is checked on its own). The rules are
 // a safety net, not a security boundary (see docs/agentic-workflow.md).
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { commandsIn, docs, root, text } from './skillDocs';
 
-const root = new URL('../../', import.meta.url);
 const settings = JSON.parse(readFileSync(new URL('.claude/settings.json', root), 'utf8')) as {
   permissions: { allow: string[]; deny: string[] };
 };
@@ -23,32 +23,6 @@ const deny = bashPatterns(settings.permissions.deny);
 const matches = (patterns: RegExp[], command: string) => patterns.some((p) => p.test(command));
 const permitted = (command: string) => matches(allow, command) && !matches(deny, command);
 
-/** Placeholders in the docs become sample values: `<slug>` → `x`, `vX.Y.Z` → `v1.2.3`. */
-const concrete = (command: string) =>
-  command
-    .replace(/vX\.Y\.Z/g, 'v1.2.3')
-    .replace(/<[^>]+>/g, 'x')
-    .trim();
-
-/** Commands in fenced `sh` blocks and inline git/gh/curl/npm/npx code, split on `&&`. */
-function commandsIn(markdown: string): string[] {
-  const commands: string[] = [];
-  for (const [, block] of markdown.matchAll(/```sh\n([\s\S]*?)```/g)) {
-    for (const line of block.split('\n')) {
-      const command = line.replace(/\s+#\s.*$/, '').trim();
-      if (command) commands.push(command);
-    }
-  }
-  for (const [, inline] of markdown.matchAll(/`((?:git|gh|curl|npm|npx) [^`]+)`/g))
-    commands.push(inline);
-  return commands.flatMap((c) => c.split('&&')).map(concrete);
-}
-
-const docs = [
-  ...readdirSync(new URL('.claude/skills/', root)).map((d) => `.claude/skills/${d}/SKILL.md`),
-  ...readdirSync(new URL('.claude/agents/', root)).map((f) => `.claude/agents/${f}`),
-];
-const text = (file: string) => readFileSync(new URL(file, root), 'utf8');
 const documented = docs.flatMap((file) =>
   commandsIn(text(file)).map((command) => ({ file, command })),
 );
