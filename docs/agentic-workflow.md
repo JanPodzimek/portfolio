@@ -95,7 +95,9 @@ exactly the commands the skills run, so the automated flow never stops at a prom
 `feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, read-only deployment status
 calls, plus a `curl -sI` against production for manual checks (the release gate itself is
 the "Production smoke" workflow). It denies destructive `gh` commands (repo
-delete/edit/rename/archive, `gh api` with DELETE/POST/PATCH/PUT or fields on deployments,
+delete/edit/rename/archive, `gh api` with a DELETE/POST/PATCH/PUT method in any letter case
+(the rules match the first letter after `-X` or `--method`, so `-X GET` stays allowed) or with
+fields or `--input` on deployments (the deployment lookup puts its query in the path instead),
 rulesets, branch protection, `gh auth refresh`, secrets, release deletion).
 `tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it
 against these rules. Pattern matching on command text can be bypassed; the token scope and the

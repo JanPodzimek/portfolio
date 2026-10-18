@@ -141,7 +141,7 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    the commands take. Still `[]` after 10 attempts → read the deployment state for the report
    and go to step 9:
    ```sh
-   gh api repos/JanPodzimek/portfolio/deployments -X GET -f environment=Production -f sha=<oid> -q '.[0].id'
+   gh api 'repos/JanPodzimek/portfolio/deployments?environment=Production&sha=<oid>' -q '.[0].id'
    gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'
    ```
 8. **Report and clean up.** Report the version, the change list, the merge commit and the
