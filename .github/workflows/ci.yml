@@ -2,10 +2,33 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
+    # `edited` re-runs branch-policy when a PR is retargeted to another base branch.
+    types: [opened, synchronize, reopened, edited]
+
+# One run per PR (or per pushed branch); a newer push cancels an outdated PR run. Runs for
+# pushes to main/develop are never cancelled, /deploy reads their result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  branch-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/check-branch-policy.mjs
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
