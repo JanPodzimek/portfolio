@@ -13,8 +13,8 @@ commands and the test suites; you must not modify files, commit, or push.
 
 ```sh
 git status --short
-git log --oneline main..HEAD
-git diff main...HEAD --stat && git diff main...HEAD
+git log --oneline develop..HEAD
+git diff develop...HEAD --stat && git diff develop...HEAD
 git diff            # uncommitted work, if any
 ```
 

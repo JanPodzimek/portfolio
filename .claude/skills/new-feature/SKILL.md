@@ -10,7 +10,8 @@ argument-hint: <what to build>
    tests prove it works. If a decision is Jan's to make (wording, visual direction, scope), ask
    before building.
 2. **Delegate implementation to the `implementer` agent** with the plan and the acceptance
-   criteria. It works on a `feat/<slug>` branch.
+   criteria. It works on a `feat/<slug>` branch created from an up-to-date `develop`
+   (`git switch develop && git pull`, then `git switch -c feat/<slug>` as a separate command).
 3. Checklist the implementer must satisfy:
    - [ ] Unit tests for new logic in `tests/unit/`, e2e tests for new behaviour in `tests/e2e/`
    - [ ] All new text in `src/i18n/en.ts` and `src/i18n/cs.ts`
@@ -19,4 +20,7 @@ argument-hint: <what to build>
 4. **Run `/review`.** If the verdict is "Changes requested", send the findings back to the
    implementer and review again. Stop after two rounds and ask Jan.
 5. **Report to Jan**: what changed, how it is tested, what he should check by eye (Czech
-   wording, claims about his work), and that `/deploy` is the next step when he is happy.
+   wording, claims about his work).
+6. **PR into `develop`.** Push the branch, open the PR against `develop`
+   (`gh pr create --base develop`) and squash-merge it (`gh pr merge --squash`) only after Jan
+   says so. Releasing to production is a separate step (`/deploy`).

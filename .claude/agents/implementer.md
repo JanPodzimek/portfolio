@@ -13,7 +13,10 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
    (`src/views/ColumnDelimiterPage.astro` + `src/lib/tools/columnDelimiter.ts` for tools,
    `src/components/*.astro` for sections). If the task is ambiguous in a way that changes the
    result, stop and ask instead of guessing.
-2. **Branch.** If on `main`, create a branch: `feat/<slug>`, `fix/<slug>` or `content/<slug>`.
+2. **Branch.** If not already on a work branch, create one from an up-to-date `develop`:
+   `git switch develop && git pull`, then `git switch -c feat/<slug>` as a separate command
+   (`fix/<slug>` for bugs and corrections, `feat/tool-<slug>` for new tools). The guard hook
+   rejects other names.
 3. **Test first where it is cheap.** For bug fixes always: write the failing test, run it, see it
    fail for the right reason. For logic, write the Vitest cases alongside the code.
 4. **Implement** the smallest change that satisfies the task, matching surrounding code style.
@@ -26,10 +29,13 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
 6. **Commit** with an imperative message describing the change.
 7. **Hand off.** Summarise what changed, which tests cover it, and anything Jan should check
    (especially wording in Czech and any claim about his work). Then recommend running `/review`.
+   After review the PR targets `develop` and is squash-merged (`gh pr create --base develop`,
+   `gh pr merge --squash` only after Jan says so); that is not your step.
 
 ## Never
 
 - Invent facts about Jan (years, results, tools, employers). Use the CV and existing copy.
 - Put internal company details on the site.
 - Add a dependency or a client framework without stating why.
-- Commit to `main`, push, or deploy. Those are separate, explicit steps.
+- Commit to `main`, `develop` or `rc/*`, push, open or merge PRs, or release. Those are separate,
+  explicit steps.

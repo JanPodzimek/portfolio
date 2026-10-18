@@ -23,12 +23,17 @@ Steps:
 
 1. Agree the behaviour with Jan as a short spec: inputs, options, outputs, edge cases. Edge
    cases become unit tests.
-2. Delegate to the `implementer` agent on `feat/tool-<slug>` with the spec and the table above.
+2. Delegate to the `implementer` agent on `feat/tool-<slug>` (created from an up-to-date `develop`:
+   `git switch develop && git pull`, then `git switch -c feat/tool-<slug>` as a separate command)
+   with the spec and the table above.
 3. Requirements: runs fully in the browser (nothing sent anywhere), works from the keyboard,
    output has a copy button if it is text, `data-testid` prefix unique to the tool.
 4. `tests/unit/content.test.ts` checks the registry, routes and test files exist, so it fails
    until every piece is in place.
 5. `npm run verify`, then `/review`.
+6. **PR into `develop`.** Push the branch, open the PR against `develop`
+   (`gh pr create --base develop`) and squash-merge it (`gh pr merge --squash`) only after Jan
+   says so.
 
 Backlog ideas: JSON formatter/validator, GUID generator, Base64 encode/decode, Czech test data
 generator (IČO / rodné číslo with valid checksums).

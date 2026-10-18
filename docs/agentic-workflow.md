@@ -16,13 +16,36 @@ for anyone coming from Copilot custom agents.
 Jan: "/new-feature add a dark/light preview to the hero"
   │
   ├─ main session plans (3–6 bullets), asks if a decision is Jan's
-  ├─ implementer agent: branch → tests → code → EN+CZ text → verify → commit
-  │     └─ hooks: Prettier on every edit · verify:fast before it may stop · no commits on main
+  ├─ implementer agent: feat/<slug> from develop → tests → code → EN+CZ text → verify → commit
+  │     └─ hooks: Prettier on every edit · verify:fast before it may stop · branch policy
   ├─ /review → reviewer agent (read-only, fresh context): diff vs CLAUDE.md, runs checks,
   │            risks, findings table with severity, verdict
   ├─ fix findings (back to implementer), max two rounds, then ask Jan
-  └─ /deploy (only when Jan asks): verify → push branch → PR → CI → Jan merges → smoke test
+  ├─ PR into develop → CI green → Jan says go → squash merge
+  └─ /deploy (only when Jan asks): rc/vX.Y.Z from main ← develop → PR to main → Jan merges
+                                    → tag vX.Y.Z → smoke test
 ```
+
+## Branching
+
+```
+feat/<slug> ─┐ squash
+fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──merge commit──▶ main ──▶ Vercel production
+                                              ▲ always created from the current main
+```
+
+- `feat/<slug>` for new things (features, new text, `feat/tool-<slug>` for tools), `fix/<slug>`
+  for bugs and corrections. Created from an up-to-date `develop`.
+- `develop` accepts only squash-merged PRs from `feat/*` and `fix/*`.
+- `rc/vX.Y.Z` is created from the current `main` and accepts only `develop` (merge commit).
+  Every release goes through an rc.
+- `main` accepts only merge commits from `rc/vX.Y.Z`; after the merge, `main` is tagged
+  `vX.Y.Z`.
+- Versioning is semver, starting at `v1.0.0`: a release with any `feat` bumps minor, fixes only
+  bump patch.
+- Enforced by `.claude/hooks/guard-git.mjs` locally and the CI `branch-policy` job on PRs, both
+  using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`).
+  GitHub branch protection should additionally require the CI checks and restrict merge methods.
 
 ## Why two agents
 
@@ -50,11 +73,11 @@ against a fixed checklist. It's the same separation of duties a QA team has with
 
 ## Hooks
 
-| Event                    | Script                             | Effect                                                                   |
-| ------------------------ | ---------------------------------- | ------------------------------------------------------------------------ |
-| PreToolUse (Bash)        | `.claude/hooks/guard-git.mjs`      | Blocks commits on `main`, pushes to `main`, force pushes                 |
-| PostToolUse (Edit/Write) | `.claude/hooks/format-file.mjs`    | Formats the edited file with Prettier                                    |
-| Stop                     | `.claude/hooks/verify-on-stop.mjs` | If code changed, runs `verify:fast`; on failure Claude must keep working |
+| Event                    | Script                             | Effect                                                                                  |
+| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| PreToolUse (Bash)        | `.claude/hooks/guard-git.mjs`      | Enforces branch names; no commits/merges/pushes on main, develop, rc/*; no force pushes |
+| PostToolUse (Edit/Write) | `.claude/hooks/format-file.mjs`    | Formats the edited file with Prettier                                                   |
+| Stop                     | `.claude/hooks/verify-on-stop.mjs` | If code changed, runs `verify:fast`; on failure Claude must keep working                |
 
 ## Personal settings
 
