@@ -70,15 +70,23 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    - `CLEAN` in `mergeStateStatus` but not `MERGED`: the checks are green and GitHub has not run
      the queued auto-merge yet (it can take a minute or more, and watching the finished checks
      again returns at once). Merge it directly with the same method,
-     `gh pr merge <pr> --merge`, then run the view again. "Already merged" from gh is fine. This
-     is safe: the rulesets have no bypass actors and require `verify` and `branch-policy`, so
-     GitHub refuses the merge while they are not green.
-   - `BLOCKED` or `DIRTY`: the PR cannot merge: stop and report the PR URL and its state
-     (step 9).
+     `gh pr merge <pr> --merge`, then run the view again. "Already merged" from gh
+     is fine. On any other error, run the view again: `MERGED` is fine, anything else → stop and
+     report (step 9). This is safe: the rulesets have no bypass actors and require `verify` and
+     `branch-policy`, so GitHub refuses the merge while they are not green.
+   - `BLOCKED`: run `gh pr checks <pr> --required`. If `verify` or `branch-policy` is missing or
+     pending (not failed), watch again with `gh pr checks <pr> --watch --required -i 15` (up to 5
+     times, like "no checks reported"), then view and act again. Stop and report the PR URL and
+     its state (step 9) if a required check failed, or if it is still `BLOCKED` after that.
+   - `DIRTY`: a merge conflict: stop and report the PR URL and its state (step 9).
    - `BEHIND` (step 5 only): `main` moved, see "If `main` moved" in step 5.
-   - `UNKNOWN` or `UNSTABLE`: GitHub is still computing it; run the view up to twice more and act
-     on the new value. Still one of these → try the direct merge above; if GitHub refuses it,
-     stop and report (step 9).
+   - `UNSTABLE`: mergeable, but a check that is not required failed or is still pending (e.g. the
+     Vercel preview). Run `gh pr checks <pr>` (all checks, without `--required`). A failed check is
+     red CI: stop and report it (step 9). If it is only pending, wait with
+     `gh pr checks <pr> --watch -i 15`, then view and act again.
+   - `UNKNOWN`: GitHub is still computing it; run the view up to twice more and act on the new
+     value. Still `UNKNOWN` → try the direct merge above; if GitHub refuses it, stop and
+     report (step 9).
 
    **If `gh pr merge <pr> --merge --auto` is refused with "clean status"**, the PR is already
    mergeable, so there is nothing to queue. That only happens when a successful `branch-policy`
@@ -96,8 +104,8 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    Apply the merge rule from step 4. **If `main` moved** (`mergeStateStatus` is `BEHIND`, or
    `branch-policy` fails because the rc does not contain the current `main`): `main` is strict,
    so auto-merge would wait forever. Do not update the rc. Close the release PR and delete the
-   rc, then start again at step 1 (the version may change). `--delete-branch` removes the remote and the local rc, so no
-   `git branch -D` follows:
+   rc, then start again at step 1 (the version may change). `--delete-branch` removes the
+   remote and the local rc, so no `git branch -D` follows:
    ```sh
    git switch develop && gh pr close <pr> --delete-branch
    ```

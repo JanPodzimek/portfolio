@@ -42,6 +42,36 @@ describe('skills: merging a PR', () => {
     },
   );
 
+  /** The text of the merge-rule bullet that starts with `` `<state>` ``, up to the next bullet. */
+  const bullet = (file: string, state: string) =>
+    new RegExp(`^\\s*- \`${state}\`[\\s\\S]*?(?=^\\s*- \`|^\\s*$)`, 'm').exec(text(file))?.[0] ??
+    '';
+  const checksIn = (part: string) =>
+    [...part.matchAll(/`(gh pr checks[^`]*)`/g)].map(([, c]) => c.replace(/\s+/g, ' '));
+
+  it.each(mergeSkills)('%s: handles each merge state in its own bullet', (file) => {
+    for (const state of ['MERGED', 'CLEAN', 'BLOCKED', 'UNKNOWN', 'UNSTABLE'])
+      expect(bullet(file, state), state).not.toBe('');
+    // UNKNOWN (still computing) and UNSTABLE (a non-required check) need different handling.
+    expect(bullet(file, 'UNKNOWN')).not.toMatch(/`UNSTABLE`/);
+  });
+
+  it.each(mergeSkills)('%s: UNSTABLE looks at all checks, not only the required ones', (file) => {
+    const checks = checksIn(bullet(file, 'UNSTABLE'));
+    expect(checks.some((c) => !c.includes('--required') && !c.includes('--watch'))).toBe(true);
+    expect(checks.some((c) => c.includes('--watch') && !c.includes('--required'))).toBe(true);
+    expect(bullet(file, 'UNSTABLE')).toMatch(/fail/i);
+  });
+
+  it.each(mergeSkills)('%s: BLOCKED checks the required checks before stopping', (file) => {
+    expect(checksIn(bullet(file, 'BLOCKED')).some((c) => c.includes('--required'))).toBe(true);
+  });
+
+  it.each(mergeSkills)('%s: a failed direct merge is followed by another view', (file) => {
+    expect(bullet(file, 'CLEAN')).toMatch(/already merged/i);
+    expect(bullet(file, 'CLEAN')).toMatch(/any other error/i);
+  });
+
   it('uses squash for work PRs and a merge commit for releases', () => {
     for (const file of mergeSkills) {
       const method = file.includes('/deploy/') ? '--merge' : '--squash';

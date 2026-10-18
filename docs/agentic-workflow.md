@@ -37,7 +37,9 @@ auto-merge a minute or more after the checks pass, and watching finished checks 
 (auto mode refuses `sleep`), so a `CLEAN` but not yet `MERGED` PR is merged directly with the
 same method (squash into `develop`, merge commit into an rc and `main`). That cannot skip a
 check: the rulesets have no bypass actors and require `verify` and `branch-policy`, so GitHub
-refuses the merge until they are green. `BLOCKED` or `DIRTY` stops the flow.
+refuses the merge until they are green. `BLOCKED` first re-checks the required checks (a
+missing or pending one is watched again), `UNSTABLE` looks at all checks (a failed one is red CI
+and stops the flow, a pending one is watched), `UNKNOWN` is viewed again, `DIRTY` stops.
 `tests/unit/skills.test.ts` guards this rule.
 
 ## Branching

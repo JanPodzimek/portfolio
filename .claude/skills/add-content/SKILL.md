@@ -48,13 +48,21 @@ Rules:
    - `CLEAN` in `mergeStateStatus` but not `MERGED`: the checks are green and GitHub has not run
      the queued auto-merge yet (it can take a minute or more, and watching the finished checks
      again returns at once). Merge it directly with the same method,
-     `gh pr merge --squash --delete-branch`, then run the view again. "Already merged" from gh is
-     fine. This is safe: the rulesets have no bypass actors and require `verify` and
+     `gh pr merge --squash --delete-branch`, then run the view again. "Already merged" from gh
+     is fine. On any other error, run the view again: `MERGED` is fine, anything else → stop and
+     report. This is safe: the rulesets have no bypass actors and require `verify` and
      `branch-policy`, so GitHub refuses the merge while they are not green.
-   - `BLOCKED` or `DIRTY`: the PR cannot merge (a required check failed or is missing, or a
-     conflict): stop and report the PR URL and its state.
-   - `UNKNOWN` or `UNSTABLE`: GitHub is still computing it; run the view up to twice more and act
-     on the new value. Still one of these → try the direct merge above; if GitHub refuses it,
-     stop and report.
+   - `BLOCKED`: run `gh pr checks --required`. If `verify` or `branch-policy` is missing or
+     pending (not failed), watch again with `gh pr checks --watch --required -i 15` (up to 5
+     times, like "no checks reported"), then view and act again. Stop and report the PR URL and
+     its state if a required check failed, or if it is still `BLOCKED` after that.
+   - `DIRTY`: a merge conflict: stop and report the PR URL and its state.
+   - `UNSTABLE`: mergeable, but a check that is not required failed or is still pending (e.g. the
+     Vercel preview). Run `gh pr checks` (all checks, without `--required`). A failed check is
+     red CI: stop and report it. If it is only pending, wait with
+     `gh pr checks --watch -i 15`, then view and act again.
+   - `UNKNOWN`: GitHub is still computing it; run the view up to twice more and act on the new
+     value. Still `UNKNOWN` → try the direct merge above; if GitHub refuses it, stop and
+     report.
 
    Releasing to production is a separate step (`/deploy`, only when Jan asks).
