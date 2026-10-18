@@ -20,17 +20,21 @@ GitHub auto-merge and happens when the required checks (`verify`, `branch-policy
 Report what failed and where; never work around it (no manual merges, no direct pushes to
 `main`/`develop`/`rc/*`, never squash or rebase into `main` or an rc).
 
+**Waiting** uses only blocking commands: `gh pr checks <pr> --watch --required -i 15` and
+`gh run watch <id>`. Never `sleep` or a sleep loop (auto mode refuses them).
+
 1. **Preconditions.** Otherwise stop and say what is missing.
    ```sh
    git fetch origin --tags
    git status --short                         # must be empty
    git log --oneline origin/main..origin/develop   # must not be empty: unreleased work
-   gh run list --workflow CI --branch develop --event push --limit 1 --json conclusion,headSha
+   gh run list --workflow CI --branch develop --event push --limit 1 --json databaseId,status,conclusion,headSha
    git rev-parse origin/develop
    ```
-   The run must have `conclusion` `success` and its `headSha` must equal
-   `git rev-parse origin/develop`. No runs at all means nothing has been merged into `develop`
-   yet, so there is nothing to release.
+   If the run's `status` is not `completed` yet, wait for it with `gh run watch <databaseId>`
+   and run the `gh run list` again. Then the run must have `conclusion` `success` and its
+   `headSha` must equal `git rev-parse origin/develop`. No runs at all means nothing has been
+   merged into `develop` yet, so there is nothing to release.
 2. **Choose the version.** Previous release: `git describe --tags --abbrev=0 origin/main`
    (`v1.0.0` on `8477302` is the baseline). Find the work PRs in the release:
    ```sh
@@ -48,45 +52,53 @@ Report what failed and where; never work around it (no manual merges, no direct 
    ```sh
    gh pr create --base rc/vX.Y.Z --head develop --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch --required
-   gh pr view <pr> --json state -q .state      # poll every ~30 s until MERGED
+   gh pr checks <pr> --watch --required -i 15
+   gh pr view <pr> --json state,mergeStateStatus,mergeCommit
    ```
-   For every `gh pr checks` in this skill: if it says "no checks reported", run it again every
-   ~10 s for up to ~60 s before treating that as a failure. For every MERGED poll: if the PR is
-   not merged 20 minutes after its checks passed, stop and report (step 9).
+   For every `gh pr checks` in this skill: if it says "no checks reported", the checks have not
+   started yet; run it again a few times before treating that as a failure. Auto-merge completes
+   within seconds of the checks passing; if `gh pr view` does not show `MERGED` yet, re-run the
+   watch or the view a few times. If the PR is not `MERGED` 20 minutes after its checks passed,
+   stop and report the PR URL and its state (step 9).
 5. **rc → main (merge commit):**
    ```sh
    gh pr create --base main --head rc/vX.Y.Z --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch --required
-   gh pr view <pr> --json state,mergeCommit    # poll every ~30 s until MERGED; note mergeCommit.oid
+   gh pr checks <pr> --watch --required -i 15
+   gh pr view <pr> --json state,mergeStateStatus,mergeCommit   # MERGED: note mergeCommit.oid
    ```
-   **If `main` moved** (`branch-policy` fails because the rc does not contain the current
-   `main`, or the strict ruleset reports the branch is out of date): do not update the rc.
-   Close the release PR and delete the rc, then start again at step 1 (the version may change):
+   **If `main` moved** (`mergeStateStatus` is `BEHIND`, or `branch-policy` fails because the rc
+   does not contain the current `main`): `main` is strict, so auto-merge would wait forever. Do
+   not update the rc. Close the release PR and delete the rc, then start again at step 1 (the
+   version may change). `--delete-branch` removes the remote and the local rc, so no
+   `git branch -D` follows:
    ```sh
-   gh pr close <pr> --delete-branch
-   git switch develop && git branch -D rc/vX.Y.Z
+   git switch develop && gh pr close <pr> --delete-branch
    ```
 6. **Tag the release** on the merge commit (`git rev-parse origin/main` must equal the
    `mergeCommit.oid` from step 5):
    ```sh
    git fetch origin && git tag vX.Y.Z origin/main && git push origin vX.Y.Z
    ```
-7. **Wait for the Vercel production deployment** of that commit (poll every ~15 s, up to
-   ~10 min):
+7. **Wait for the Vercel production deployment** of that commit. Vercel builds while CI runs
+   on the push to `main`, so watch that run first, then read the deployment state:
    ```sh
+   gh run list --workflow CI --branch main --event push --commit <oid> --limit 1 --json databaseId
+   gh run watch <databaseId>
    gh api repos/JanPodzimek/portfolio/deployments -X GET -f environment=Production -f sha=<oid> -q '.[0].id'
-   gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'   # until success
+   gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'   # success
    ```
-   `failure` or `error` → step 9. If no deployment record appears, poll the smoke test instead.
+   `failure` or `error` → step 9. If the state is still `pending` or `in_progress`, or no
+   deployment record appears, re-run the two deployment calls (or go on to the smoke test) a few
+   times; still not `success` about 10 minutes after the merge → step 9.
 8. **Smoke test production:**
    ```sh
    curl -sI https://portfolio-v2-sigma-two.vercel.app/
    curl -sI https://portfolio-v2-sigma-two.vercel.app/cs/
    curl -sI https://portfolio-v2-sigma-two.vercel.app/cv/Jan-Podzimek-CV-EN.pdf
    ```
-   The first line of each response must be `HTTP/… 200`. Report the version, the change list, the merge commit and the result.
+   The first line of each response must be `HTTP/… 200`. Report the version, the change list,
+   the merge commit and the result.
    Then `git switch develop && git pull && git branch -D rc/vX.Y.Z` (GitHub already deleted the
    remote rc after the merge).
 9. **On failure** report exactly what failed (step, output, PR or deployment URL) and point to
