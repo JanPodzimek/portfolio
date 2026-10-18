@@ -4,6 +4,10 @@
 // glob permission rules), so this script is the one allowed read. It only sends GETs, runs gh
 // without a shell, and passes nothing to it but paths built from the validated sha and the
 // numeric id gh returned. The logic is in ./lib/deployment-state.mjs (unit-tested).
+// Running gh without a shell stops argument injection, not a hijack: the script is only as
+// trustworthy as the working tree, and anyone who can edit the repository can already run code
+// through `npm run *`. If gh fails (auth, rate limit, network), it exits non-zero and prints no
+// result line.
 import { execFileSync } from 'node:child_process';
 import {
   USAGE,

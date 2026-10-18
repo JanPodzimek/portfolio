@@ -144,8 +144,10 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    node scripts/deployment-state.mjs <oid>
    ```
    It takes the full 40-character `<oid>` and prints `deployment=<id> state=<state>`, or
-   `deployment=none` if Vercel has not created a Production deployment for that commit. Do not
-   call the GitHub API with gh directly: every gh api command is denied.
+   `deployment=none` if Vercel has not created a Production deployment for that commit. A
+   non-zero exit means the lookup itself failed (gh auth, rate limit, network): report that
+   error as it is and do not treat it as `deployment=none`. Do not call the GitHub API with gh
+   directly: every gh api command is denied.
 8. **Report and clean up.** Report the version, the change list, the merge commit and the
    "Production smoke" run URL. There is no separate local `curl` smoke test any more: the
    workflow runs the same checks and, unlike a bare 200, proves that production serves this

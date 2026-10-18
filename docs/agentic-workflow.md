@@ -100,7 +100,9 @@ deletion) and **every `gh api` command**. Glob rules cannot safely constrain how
 flags (grouped short flags such as `-iXPOST` or `-if ref=main` hide the method and the fields).
 The one API read the release gate needs, a commit's Production deployment state, lives in
 `scripts/deployment-state.mjs` instead: it accepts only a 40-character hex sha, runs gh without
-a shell and sends only GETs. `tests/unit/settings.test.ts` extracts every command from the
+a shell and sends only GETs. That stops argument injection, not a hijack: the script is only
+as trustworthy as the working tree, and whoever can edit the repository can already run code
+through `npm run *`. `tests/unit/settings.test.ts` extracts every command from the
 skills and agents, checks it against these rules and fails if any of them is a raw `gh api`
 call. Its matcher only approximates Claude Code's rule matching. Pattern matching on command
 text can be bypassed; the token scope and the rulesets are what actually protect the repository.
