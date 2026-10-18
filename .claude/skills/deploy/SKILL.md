@@ -83,7 +83,8 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    - `UNSTABLE`: mergeable, but a check that is not required failed or is still pending (e.g. the
      Vercel preview). Run `gh pr checks <pr>` (all checks, without `--required`). A failed check is
      red CI: stop and report it (step 9). If it is only pending, wait with
-     `gh pr checks <pr> --watch -i 15`, then view and act again.
+     `gh pr checks <pr> --watch -i 15`, then view and act again (up to 5 times, like `BLOCKED`).
+     Stop and report the PR URL and its state (step 9) if it is still `UNSTABLE` after that.
    - `UNKNOWN`: GitHub is still computing it; run the view up to twice more and act on the new
      value. Still `UNKNOWN` → try the direct merge above; if GitHub refuses it, stop and
      report (step 9).
@@ -140,9 +141,13 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    the commands take. Still `[]` after 10 attempts → read the deployment state for the report
    and go to step 9:
    ```sh
-   gh api repos/JanPodzimek/portfolio/deployments -X GET -f environment=Production -f sha=<oid> -q '.[0].id'
-   gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'
+   node scripts/deployment-state.mjs <oid>
    ```
+   It takes the full 40-character `<oid>` and prints `deployment=<id> state=<state>`, or
+   `deployment=none` if Vercel has not created a Production deployment for that commit. A
+   non-zero exit means the lookup itself failed (gh auth, rate limit, network): report that
+   error as it is and do not treat it as `deployment=none`. Do not call the GitHub API with gh
+   directly: every gh api command is denied.
 8. **Report and clean up.** Report the version, the change list, the merge commit and the
    "Production smoke" run URL. There is no separate local `curl` smoke test any more: the
    workflow runs the same checks and, unlike a bare 200, proves that production serves this
