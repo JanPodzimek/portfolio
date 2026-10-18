@@ -28,7 +28,6 @@
       "Bash(git rev-parse *)",
       "Bash(git describe *)",
       "Bash(git rev-list *)",
-      "Bash(curl -sI https://portfolio-v2-sigma-two.vercel.app/*)",
       "Bash(gh api 'repos/JanPodzimek/portfolio/deployments?environment=Production&sha=*' -q *)",
       "Bash(gh api repos/JanPodzimek/portfolio/deployments/*/statuses -q *)"
     ],

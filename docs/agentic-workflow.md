@@ -92,9 +92,9 @@ fetches the public site.
 
 **Permission rules are a safety net, not a security boundary.** `.claude/settings.json` allows
 exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
-`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, read-only deployment status
-calls, plus a `curl -sI` against production for manual checks (the release gate itself is
-the "Production smoke" workflow). It denies destructive `gh` commands (repo
+`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, and read-only deployment status
+calls. No `curl` is allowed: the "Production smoke" workflow checks production, and a manual
+`curl` asks for permission first. It denies destructive `gh` commands (repo
 delete/edit/rename/archive, `gh api` with a DELETE/POST/PATCH/PUT method in any letter case
 (the rules match the first letter after `-X` or `--method`, so `-X GET` stays allowed) or with
 fields or `--input` on deployments (the deployment lookup puts its query in the path instead),
