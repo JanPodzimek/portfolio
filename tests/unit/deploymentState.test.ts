@@ -1,9 +1,20 @@
 // The pure parts of scripts/deployment-state.mjs: the only input that reaches `gh` is a commit
 // sha, so it must be exactly 40 lower-case hex characters, and the deployment id gh returns
 // must be numeric before it goes into the second path.
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import {
+  copyFileSync,
+  linkSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   deploymentsPath,
   formatLine,
@@ -93,4 +104,79 @@ describe('deployment-state: command line', () => {
       expect(result.stdout).toBe('');
     },
   );
+});
+
+// End to end with a fake `gh` first on PATH (see tests/unit/fixtures/fake-gh.mjs): the script
+// runs exactly these two read-only calls and prints their result. No test-only switch in the
+// script: it still runs the plain `gh` from PATH, as in production.
+describe('deployment-state: calls to gh', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fake-gh-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  // A symlink is enough where allowed; Windows without developer mode needs a hard link or copy.
+  const gh = join(dir, process.platform === 'win32' ? 'gh.exe' : 'gh');
+  try {
+    symlinkSync(process.execPath, gh);
+  } catch {
+    try {
+      linkSync(process.execPath, gh);
+    } catch {
+      copyFileSync(process.execPath, gh);
+    }
+  }
+
+  function run(args: string[], extraEnv: Record<string, string> = {}) {
+    const log = join(dir, 'calls.jsonl');
+    writeFileSync(log, '');
+    const pathKey = Object.keys(process.env).find((k) => /^path$/i.test(k)) ?? 'PATH';
+    const fake = pathToFileURL(fileURLToPath(new URL('./fixtures/fake-gh.mjs', import.meta.url)));
+    const result = spawnSync(process.execPath, [script, ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        [pathKey]: `${dir}${delimiter}${process.env[pathKey] ?? ''}`,
+        NODE_OPTIONS: `--import ${JSON.stringify(fake.href)}`,
+        FAKE_GH_LOG: log,
+        ...extraEnv,
+      },
+    });
+    const calls = readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as string[]);
+    return { ...result, calls };
+  }
+
+  it('makes the two GET calls and prints one line', () => {
+    const { status, stdout, stderr, calls } = run([sha]);
+    expect(stderr).toBe('');
+    expect(status).toBe(0);
+    expect(calls).toEqual([
+      [
+        'api',
+        `repos/JanPodzimek/portfolio/deployments?environment=Production&sha=${sha}`,
+        '-q',
+        '.[0].id',
+      ],
+      ['api', 'repos/JanPodzimek/portfolio/deployments/123/statuses', '-q', '.[0].state'],
+    ]);
+    for (const arg of calls.flat())
+      expect(arg).not.toMatch(/^-(X|f|F)|^--(method|field|raw-field|input)/);
+    expect(stdout).toBe('deployment=123 state=success\n');
+  });
+
+  // /deploy treats a non-zero exit as "the lookup failed", never as `deployment=none`.
+  it('exits non-zero and prints no result when gh fails', () => {
+    const { status, stdout, stderr } = run([sha], { FAKE_GH_FAIL: '1' });
+    expect(status).not.toBe(0);
+    expect(stdout).toBe('');
+    expect(stderr).toContain('HTTP 401');
+  });
+
+  it('never calls gh for an invalid sha', () => {
+    const { status, calls } = run([`${sha}&environment=Preview`]);
+    expect(status).toBe(2);
+    expect(calls).toEqual([]);
+  });
 });
