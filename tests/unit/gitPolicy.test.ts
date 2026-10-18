@@ -78,6 +78,9 @@ describe('checkGitCommand', () => {
     ['git fetch origin --tags', 'develop'],
     ['git rev-list origin/main..origin/develop', 'develop'],
     ['git describe --tags --abbrev=0 origin/main', 'develop'],
+    ['git switch develop && git pull && git branch -D rc/v1.1.0', 'rc/v1.1.0'],
+    ['git switch develop && git branch -D rc/v1.1.0', 'rc/v1.1.0'],
+    ['git rev-parse origin/main', 'rc/v1.1.0'],
     // the work-PR finish
     ['git push -u origin feat/x', 'feat/x'],
     ['git push origin --tags', 'develop'],
