@@ -73,7 +73,9 @@ describe('.claude/settings.json permissions', () => {
     expect(calls.length).toBeGreaterThan(0);
     for (const { command } of calls) {
       expect(command).toMatch(/deployments/);
-      expect(command).not.toMatch(/\s(-X|--method)|\s-[fF]|--(raw-)?field|--input/);
+      // `-X` anywhere, not only as a flag: the deny rule `gh api *-X*` would also catch a path
+      // or jq expression containing it.
+      expect(command).not.toMatch(/-X|--method|\s-[fF]|--(raw-)?field|--input/);
     }
   });
 
@@ -97,7 +99,8 @@ describe('.claude/settings.json permissions', () => {
     'gh api repos/JanPodzimek/portfolio -X PATCH -f default_branch=main',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q . -f state=success',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses --input status.json',
-    // Any case of a non-GET method, also appended to the allowed query (the last -X wins).
+    // No documented call sets a method, so -X and --method are denied whatever follows them:
+    // any case, quoted, extra spaces, appended to the allowed query (the last -X wins), even GET.
     `gh api '${query}' -q '.[0].id' -X Post`,
     `gh api '${query}' -q . -X pAtCh`,
     `gh api '${query}' -q . --method=Delete`,
@@ -105,6 +108,13 @@ describe('.claude/settings.json permissions', () => {
     `gh api '${query}' -q . -X=pOsT`,
     `gh api '${query}' -q . --method dElEtE`,
     'gh api repos/JanPodzimek/portfolio/deployments -X GET -X Post -f ref=main',
+    `gh api '${query}' -q . -X 'POST'`,
+    `gh api '${query}' -q . -X  POST`,
+    `gh api '${query}' -q . -X "Delete"`,
+    `gh api '${query}' -q . --method  put`,
+    'gh api repos/JanPodzimek/portfolio/deployments -X GET',
+    'gh api repos/JanPodzimek/portfolio/deployments -XGET',
+    'gh api repos/JanPodzimek/portfolio/deployments --method=get',
     // Fields on deployments, with and without a space.
     `gh api '${query}' -q . -f ref=main`,
     'gh api repos/JanPodzimek/portfolio/deployments -fref=main',
@@ -122,16 +132,6 @@ describe('.claude/settings.json permissions', () => {
     'git reset --hard origin/main',
   ])('denies `%s`', (command) => {
     expect(matches(deny, command)).toBe(true);
-  });
-
-  it.each([
-    'gh api repos/JanPodzimek/portfolio/deployments -X GET',
-    'gh api repos/JanPodzimek/portfolio/deployments -XGET',
-    'gh api repos/JanPodzimek/portfolio/deployments -X=get',
-    'gh api repos/JanPodzimek/portfolio/deployments --method GET',
-    'gh api repos/JanPodzimek/portfolio/deployments --method=get',
-  ])('does not deny the read-only method in `%s`', (command) => {
-    expect(matches(deny, command)).toBe(false);
   });
 
   it.each([

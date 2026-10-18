@@ -94,11 +94,11 @@ fetches the public site.
 exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
 `feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, and read-only deployment status
 calls. No `curl` is allowed: the "Production smoke" workflow checks production, and a manual
-`curl` asks for permission first. It denies destructive `gh` commands (repo
-delete/edit/rename/archive, `gh api` with a DELETE/POST/PATCH/PUT method in any letter case
-(the rules match the first letter after `-X` or `--method`, so `-X GET` stays allowed) or with
-fields or `--input` on deployments (the deployment lookup puts its query in the path instead),
-rulesets, branch protection, `gh auth refresh`, secrets, release deletion).
+`curl` asks for permission first. It denies destructive `gh` commands: repo
+delete/edit/rename/archive, `gh api` with fields or `--input` on deployments, rulesets, branch
+protection, `gh auth refresh`, secrets and release deletion. It also denies `gh api` with any
+`-X` or `--method` flag, even `-X GET`, so quoting or extra spaces cannot slip a write method
+past the rules; the deployment lookup needs neither, as a plain GET with its query in the path.
 `tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it
 against these rules. Pattern matching on command text can be bypassed; the token scope and the
 rulesets are what actually protect the repository.
