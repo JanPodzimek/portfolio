@@ -21,10 +21,14 @@ Jan: "/new-feature add a dark/light preview to the hero"
   ├─ /review → reviewer agent (read-only, fresh context): diff vs CLAUDE.md, runs checks,
   │            risks, findings table with severity, verdict
   ├─ fix findings (back to implementer), max two rounds, then ask Jan
-  ├─ PR into develop → CI green → Jan says go → squash merge
-  └─ /deploy (only when Jan asks): rc/vX.Y.Z from main ← develop → PR to main → Jan merges
-                                    → tag vX.Y.Z → smoke test
+  ├─ PR into develop → review posted as a comment → squash auto-merge when CI is green
+  └─ /deploy (only when Jan asks), end to end without manual steps:
+        rc/vX.Y.Z from main ← develop (auto-merge) → main (auto-merge) → tag vX.Y.Z
+        → wait for Vercel production → smoke test (rollback pointer on failure)
 ```
+
+Nothing waits for a manual merge. The flow stops by itself on a red check, a review with
+blocker/major findings, or a failed smoke test.
 
 ## Branching
 
@@ -47,12 +51,29 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
   using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`
   and `tests/unit/guardGitHook.test.ts`). The hook follows `cd`, `git -C`, branch switches in
   `&&` chains, `$(…)` and `sh -c`, and blocks git run any other way. It is a guard rail for
-  agents; the real enforcement is the GitHub rulesets and required checks (see bootstrap).
+  agents; the real enforcement is the GitHub rulesets and required checks (see below).
 
-**Bootstrap (one-time, Jan on GitHub):** create `develop` from `main`; tag the current
-production commit `8477302` as `v1.0.0`; make `develop` the default branch; add rulesets:
-`main` merge commit only and branch must be up to date, `develop` squash only, `rc/v*` merge
-commit only, and required status checks `verify` and `branch-policy` on all three.
+**Bootstrap (done).** GitHub is set up like this:
+
+- `develop` created from `main` at `8477302` and set as the default branch; tag `v1.0.0` on
+  `8477302`.
+- Rulesets, no bypass actors, 0 required approvals, required checks `verify` + `branch-policy`:
+  `main-policy` (`refs/heads/main`, merge commit only, strict: branch must be up to date),
+  `develop-policy` (squash only, not strict), `rc-policy` (`refs/heads/rc/v*`, merge commit
+  only).
+- Auto-merge enabled; head branches deleted after merge (rc branches too; `main` and `develop`
+  are protected). Squash commit message = PR title + body. Rebase merge disabled.
+
+**Credentials.** Daily automation should run with a fine-grained personal access token limited
+to this repository: Contents, Pull requests and Workflows read/write; Actions and Commit
+statuses read; **no Administration**. GitHub then guarantees the agent cannot change settings
+or rulesets or delete the repository, whatever command it runs.
+
+**Permission rules are a safety net, not a security boundary.** `.claude/settings.json` denies
+destructive `gh` commands (repo delete/edit/rename/archive, `gh api` DELETE calls, rulesets and
+branch protection, `gh auth refresh`, secrets, release deletion) and allows the `gh pr`, `gh run`
+and deployment-status calls the flow needs. Pattern matching on command text can be bypassed;
+the token scope and the rulesets are what actually protect the repository.
 
 ## Why two agents
 
@@ -76,7 +97,7 @@ against a fixed checklist. It's the same separation of duties a QA team has with
 | `/new-tool`    | A new utility under `/tools`              | Reference implementation table                  |
 | `/add-content` | Text, skills, case studies                | Facts only from Jan / CV, both languages        |
 | `/review`      | Before every PR                           | Runs in the reviewer agent (forked context)     |
-| `/deploy`      | Releasing                                 | Manual only (`disable-model-invocation`)        |
+| `/deploy`      | Releasing, end to end                     | Only when Jan asks (`disable-model-invocation`) |
 
 ## Hooks
 

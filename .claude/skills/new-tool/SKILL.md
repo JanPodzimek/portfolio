@@ -31,9 +31,19 @@ Steps:
 4. `tests/unit/content.test.ts` checks the registry, routes and test files exist, so it fails
    until every piece is in place.
 5. `npm run verify`, then `/review`.
-6. **PR into `develop`.** Push the branch, open the PR against `develop`
-   (`gh pr create --base develop`) and squash-merge it (`gh pr merge --squash`) only after Jan
-   says so.
+6. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
+   verdict without blocker/major findings:
+   ```sh
+   git push -u origin feat/tool-<slug>
+   gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
+   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr merge --squash --auto --delete-branch
+   gh pr checks --watch
+   gh pr view --json state -q .state    # repeat until MERGED
+   git switch develop && git pull
+   ```
+   A red check is an automatic stop: fix it on the same branch (the PR updates), then watch
+   again. Releasing to production is a separate step (`/deploy`, only when Jan asks).
 
 Backlog ideas: JSON formatter/validator, GUID generator, Base64 encode/decode, Czech test data
 generator (IČO / rodné číslo with valid checksums).

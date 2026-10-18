@@ -19,8 +19,18 @@ argument-hint: <what to build>
    - [ ] `npm run verify` passes
 4. **Run `/review`.** If the verdict is "Changes requested", send the findings back to the
    implementer and review again. Stop after two rounds and ask Jan.
-5. **Report to Jan**: what changed, how it is tested, what he should check by eye (Czech
-   wording, claims about his work).
-6. **PR into `develop`.** Push the branch, open the PR against `develop`
-   (`gh pr create --base develop`) and squash-merge it (`gh pr merge --squash`) only after Jan
-   says so. Releasing to production is a separate step (`/deploy`).
+5. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
+   verdict without blocker/major findings:
+   ```sh
+   git push -u origin feat/<slug>
+   gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
+   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr merge --squash --auto --delete-branch
+   gh pr checks --watch
+   gh pr view --json state -q .state    # repeat until MERGED
+   git switch develop && git pull
+   ```
+   A red check is an automatic stop: fix it on the same branch (the PR updates), then watch
+   again. Releasing to production is a separate step (`/deploy`, only when Jan asks).
+6. **Report to Jan**: what changed, how it is tested, the merged PR, and what he may want to
+   check by eye (Czech wording, claims about his work); corrections go in a `fix/` PR.

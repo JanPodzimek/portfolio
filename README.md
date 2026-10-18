@@ -46,7 +46,7 @@ E2E tests run against the production build (`astro preview`) on desktop and mobi
 `main` is production. Vercel builds every push to `main` and a preview for every pull request.
 Work happens on `feat/<slug>` / `fix/<slug>` branches that are squash-merged into `develop`; a
 release goes `develop` → `rc/vX.Y.Z` (from current `main`) → `main` with merge commits and is
-tagged `vX.Y.Z` (see [`docs/agentic-workflow.md`](docs/agentic-workflow.md#branching) and
+tagged `vX.Y.Z`. All merges are GitHub auto-merges after green CI and a clean review (see [`docs/agentic-workflow.md`](docs/agentic-workflow.md#branching) and
 `.claude/skills/deploy/`).
 
 ## Working on it with Claude Code

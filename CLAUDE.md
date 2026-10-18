@@ -60,10 +60,12 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
    ```
    Work branches are `feat/<slug>` (new things, incl. new text and `feat/tool-<slug>`) or
    `fix/<slug>` (bugs, corrections), created from an up-to-date `develop`. `develop` is the
-   integration branch: every work PR targets it and is squash-merged after `/review` and green
-   CI. A release is `rc/vX.Y.Z` created from the current `main`; `develop` → rc and rc → `main`
-   are merge commits, then `main` is tagged `vX.Y.Z` (any feat → minor, fixes only → patch).
-   The `guard-git` hook and the CI `branch-policy` check enforce this; no force pushes.
+   integration branch: every work PR targets it. A release (`/deploy`, only when Jan asks) is
+   `rc/vX.Y.Z` created from the current `main`; `develop` → rc and rc → `main` are merge
+   commits, then `main` is tagged `vX.Y.Z` (any feat → minor, fixes only → patch). **Merges are
+   automated:** GitHub auto-merge once CI is green and `/review` has no blocker/major findings;
+   no human merge step. Red CI or a bad review stops the flow. The `guard-git` hook, the CI
+   `branch-policy` check and GitHub rulesets enforce this; no force pushes.
 6. **Definition of done:** `npm run verify` passes and the reviewer agent has no open
    blocker/major findings.
 7. **Facts about Jan come from his CV or from Jan.** Never invent numbers, employers, tools or
@@ -72,7 +74,7 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
 ## Workflow
 
 - New feature: `/new-feature` · bug: `/fix-bug` · new QA tool: `/new-tool` · text/case study:
-  `/add-content` · review: `/review` · release (rc → `main` → tag): `/deploy`.
+  `/add-content` · review: `/review` · release (rc → `main` → tag → production, end to end): `/deploy`.
 - Implementation is done by the `implementer` agent; review by the separate, read-only
   `reviewer` agent. The author of a change never reviews it.
 

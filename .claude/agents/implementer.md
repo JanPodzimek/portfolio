@@ -28,13 +28,13 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
 6. **Commit** with an imperative message describing the change.
 7. **Hand off.** Summarise what changed, which tests cover it, and anything Jan should check
    (especially wording in Czech and any claim about his work). Then recommend running `/review`.
-   After review the PR targets `develop` and is squash-merged (`gh pr create --base develop`,
-   `gh pr merge --squash` only after Jan says so); that is not your step.
+   After a clean review the main session ships it: PR into `develop`, squash auto-merge once
+   CI is green (`gh pr merge --squash --auto`). That is not your step.
 
 ## Never
 
 - Invent facts about Jan (years, results, tools, employers). Use the CV and existing copy.
 - Put internal company details on the site.
 - Add a dependency or a client framework without stating why.
-- Commit to `main`, `develop` or `rc/*`, push, open or merge PRs, or release. Those are separate,
-  explicit steps.
+- Commit to `main`, `develop` or `rc/*`, push, open or merge PRs, or release. The main session
+  does those after review.

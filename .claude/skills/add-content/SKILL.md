@@ -25,7 +25,18 @@ Rules:
    (new section, new case study count).
 4. `npm run verify:fast` (i18n parity and case-study parity tests catch missing translations),
    then a build and a quick look at both `/` and `/cs/`.
-5. Show Jan the final EN and CZ text in the reply so he can approve the wording, then `/review`.
-6. **PR into `develop`.** Push the branch, open the PR against `develop`
-   (`gh pr create --base develop`) and squash-merge it (`gh pr merge --squash`) only after Jan
-   says so.
+5. `/review`. Put the final EN and CZ text in the PR body and in the reply, so Jan can correct
+   the wording later with a `fix/` PR.
+6. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
+   verdict without blocker/major findings:
+   ```sh
+   git push -u origin <branch>
+   gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
+   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr merge --squash --auto --delete-branch
+   gh pr checks --watch
+   gh pr view --json state -q .state    # repeat until MERGED
+   git switch develop && git pull
+   ```
+   A red check is an automatic stop: fix it on the same branch (the PR updates), then watch
+   again. Releasing to production is a separate step (`/deploy`, only when Jan asks).
