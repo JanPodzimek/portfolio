@@ -1,0 +1,40 @@
+name: Production smoke
+
+# Vercel deploys main through its own GitHub integration and reports it as a deployment. When a
+# Production deployment succeeds, check that production answers and serves exactly that commit
+# (Base.astro emits <meta name="build-sha">). /deploy waits for this run as its release gate.
+on: deployment_status
+
+# Only curl against the public site: the job needs no token permissions.
+permissions: {}
+
+jobs:
+  smoke:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE: https://portfolio-v2-sigma-two.vercel.app
+      SHA: ${{ github.event.deployment.sha }}
+    steps:
+      - name: Production pages answer 200
+        run: |
+          for path in / /cs/ /cv/Jan-Podzimek-CV-EN.pdf; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$path")
+            echo "$path → $status"
+            test "$status" = 200
+          done
+      - name: Production serves this commit
+        # The alias can take a moment to switch to the new deployment: retry for up to ~3 min.
+        run: |
+          expected="<meta name=\"build-sha\" content=\"$SHA\">"
+          for attempt in $(seq 1 18); do
+            if curl -s -H 'Cache-Control: no-cache' "$SITE/?smoke=$attempt" | grep -qF "$expected"; then
+              echo "Production serves $SHA (attempt $attempt)"
+              exit 0
+            fi
+            echo "Attempt $attempt: production does not serve $SHA yet"
+            sleep 10
+          done
+          echo "::error::Production does not serve $SHA after ~3 minutes"
+          exit 1

@@ -16,20 +16,28 @@ develop ──merge commit──▶ rc/vX.Y.Z ──merge commit──▶ main �
 
 Jan asking for `/deploy` is the go. After that nothing waits for a person: every merge uses
 GitHub auto-merge and happens when the required checks (`verify`, `branch-policy`) are green.
-**Automatic stops:** a red check, a failed command or a failed smoke test stops the release.
+**Automatic stops:** a red check, a failed command or a red "Production smoke" run stops the
+release.
 Report what failed and where; never work around it (no manual merges, no direct pushes to
 `main`/`develop`/`rc/*`, never squash or rebase into `main` or an rc).
+
+**Waiting** uses only blocking commands: `gh pr checks <pr> --watch --required -i 15` and
+`gh run watch <id> --exit-status`. Never `sleep` or a sleep loop (auto mode refuses them).
+Limits are attempt counts, not clock time. Whenever a `gh run list` that should find a run
+returns `[]` (the run is not created yet), run it again; still `[]` after 5 tries → step 9.
 
 1. **Preconditions.** Otherwise stop and say what is missing.
    ```sh
    git fetch origin --tags
    git status --short                         # must be empty
    git log --oneline origin/main..origin/develop   # must not be empty: unreleased work
-   gh run list --workflow CI --branch develop --event push --limit 1 --json conclusion,headSha
+   gh run list --workflow CI --branch develop --event push --limit 1 --json databaseId,status,conclusion,headSha
    git rev-parse origin/develop
    ```
-   The run must have `conclusion` `success` and its `headSha` must equal
-   `git rev-parse origin/develop`. No runs at all means nothing has been merged into `develop`
+   If the run's `status` is not `completed` yet, wait for it with
+   `gh run watch <databaseId> --exit-status` and run the `gh run list` again. Then the run must
+   have `conclusion` `success` and its `headSha` must equal `git rev-parse origin/develop`.
+   No runs at all (`[]`, also after the retries) means nothing has been merged into `develop`
    yet, so there is nothing to release.
 2. **Choose the version.** Previous release: `git describe --tags --abbrev=0 origin/main`
    (`v1.0.0` on `8477302` is the baseline). Find the work PRs in the release:
@@ -48,47 +56,63 @@ Report what failed and where; never work around it (no manual merges, no direct 
    ```sh
    gh pr create --base rc/vX.Y.Z --head develop --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch --required
-   gh pr view <pr> --json state -q .state      # poll every ~30 s until MERGED
+   gh pr checks <pr> --watch --required -i 15
+   gh pr view <pr> --json state,mergeStateStatus,mergeCommit
    ```
-   For every `gh pr checks` in this skill: if it says "no checks reported", run it again every
-   ~10 s for up to ~60 s before treating that as a failure. For every MERGED poll: if the PR is
-   not merged 20 minutes after its checks passed, stop and report (step 9).
+   For every `gh pr checks` in this skill: if it says "no checks reported", the checks have not
+   started yet; run it again (up to 5 times) before treating that as a failure. Auto-merge
+   completes within seconds of the checks passing, so `gh pr view` should show `MERGED`. If not,
+   do up to 3 rounds of the checks watch plus the view; still not `MERGED` → stop and report the
+   PR URL and its state (step 9). `BLOCKED` or `DIRTY` in `mergeStateStatus` means auto-merge
+   cannot finish: stop and report.
 5. **rc → main (merge commit):**
    ```sh
    gh pr create --base main --head rc/vX.Y.Z --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch --required
-   gh pr view <pr> --json state,mergeCommit    # poll every ~30 s until MERGED; note mergeCommit.oid
+   gh pr checks <pr> --watch --required -i 15
+   gh pr view <pr> --json state,mergeStateStatus,mergeCommit   # MERGED: note mergeCommit.oid
    ```
-   **If `main` moved** (`branch-policy` fails because the rc does not contain the current
-   `main`, or the strict ruleset reports the branch is out of date): do not update the rc.
-   Close the release PR and delete the rc, then start again at step 1 (the version may change):
+   **If `main` moved** (`mergeStateStatus` is `BEHIND`, or `branch-policy` fails because the rc
+   does not contain the current `main`): `main` is strict, so auto-merge would wait forever. Do
+   not update the rc. Close the release PR and delete the rc, then start again at step 1 (the
+   version may change). `--delete-branch` removes the remote and the local rc, so no
+   `git branch -D` follows:
    ```sh
-   gh pr close <pr> --delete-branch
-   git switch develop && git branch -D rc/vX.Y.Z
+   git switch develop && gh pr close <pr> --delete-branch
    ```
 6. **Tag the release** on the merge commit (`git rev-parse origin/main` must equal the
    `mergeCommit.oid` from step 5):
    ```sh
    git fetch origin && git tag vX.Y.Z origin/main && git push origin vX.Y.Z
    ```
-7. **Wait for the Vercel production deployment** of that commit (poll every ~15 s, up to
-   ~10 min):
+7. **Release gate: the "Production smoke" run** for the merge commit `<oid>`. Vercel deploys
+   `main` through its own GitHub integration (not in CI). When the Production deployment
+   succeeds, `.github/workflows/production-smoke.yml` checks that `/`, `/cs/` and the CV PDF
+   answer 200 and that `/` serves `<meta name="build-sha" content="<oid>">`, i.e. this exact
+   commit and not the previous production. Its success is the release gate:
+   ```sh
+   gh run list --workflow "Production smoke" --commit <oid> --limit 1 --json databaseId,status,conclusion
+   gh run watch <databaseId> --exit-status   # red → step 9
+   ```
+   `[]` means Vercel is still building and the run does not exist yet. Then wait on the CI run
+   for the push to `main`, run the list again, and repeat up to 10 times:
+   ```sh
+   gh run list --workflow CI --branch main --event push --commit <oid> --limit 1 --json databaseId
+   gh run watch <databaseId> --exit-status
+   ```
+   Watching that CI run only serves as a natural delay of a minute or two while it runs; once it
+   has finished, watching it again returns at once, so later attempts are only as far apart as
+   the commands take. Still `[]` after 10 attempts → read the deployment state for the report
+   and go to step 9:
    ```sh
    gh api repos/JanPodzimek/portfolio/deployments -X GET -f environment=Production -f sha=<oid> -q '.[0].id'
-   gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'   # until success
+   gh api repos/JanPodzimek/portfolio/deployments/<id>/statuses -q '.[0].state'
    ```
-   `failure` or `error` → step 9. If no deployment record appears, poll the smoke test instead.
-8. **Smoke test production:**
-   ```sh
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/cs/
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/cv/Jan-Podzimek-CV-EN.pdf
-   ```
-   The first line of each response must be `HTTP/… 200`. Report the version, the change list, the merge commit and the result.
-   Then `git switch develop && git pull && git branch -D rc/vX.Y.Z` (GitHub already deleted the
-   remote rc after the merge).
+8. **Report and clean up.** Report the version, the change list, the merge commit and the
+   "Production smoke" run URL. There is no separate local `curl` smoke test any more: the
+   workflow runs the same checks and, unlike a bare 200, proves that production serves this
+   commit. Then `git switch develop && git pull && git branch -D rc/vX.Y.Z` (GitHub already
+   deleted the remote rc after the merge).
 9. **On failure** report exactly what failed (step, output, PR or deployment URL) and point to
    the rollback: in Vercel → Deployments, promote the previous production deployment, then
    `/fix-bug`. Do not revert `main` by hand.
