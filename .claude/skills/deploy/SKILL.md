@@ -18,9 +18,9 @@ Jan asking for `/deploy` is the go. After that nothing waits for a person: every
 GitHub auto-merge and happens when the required checks (`verify`, `branch-policy`) are green.
 **Automatic stops:** a red check, a failed command or a red "Production smoke" run stops the
 release.
-Report what failed and where; never work around it (no manual merges beyond the "clean status"
-case in step 4, no direct pushes to `main`/`develop`/`rc/*`, never squash or rebase into `main`
-or an rc).
+Report what failed and where; never work around it (a direct `gh pr merge <pr> --merge` only
+exactly as the merge rule in step 4 allows it, for steps 4 and 5; no direct pushes to
+`main`/`develop`/`rc/*`, never squash or rebase into `main` or an rc).
 
 **Waiting** uses only blocking commands: `gh pr checks <pr> --watch --required -i 15` and
 `gh run watch <id> --exit-status`. Never `sleep` or a sleep loop (auto mode refuses them).
@@ -63,18 +63,36 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    ```
 
    For every `gh pr checks` in this skill: if it says "no checks reported", the checks have not
-   started yet; run it again (up to 5 times) before treating that as a failure. Auto-merge
-   completes within seconds of the checks passing, so `gh pr view` should show `MERGED`. If not,
-   do up to 3 rounds of the checks watch plus the view; still not `MERGED` → stop and report the
-   PR URL and its state (step 9). `BLOCKED` or `DIRTY` in `mergeStateStatus` means auto-merge
-   cannot finish: stop and report.
+   started yet; run it again (up to 5 times) before treating that as a failure.
 
-   **If `gh pr merge --auto` fails with "clean status"** (here or in step 5), the PR is already
-   mergeable: required checks from an earlier run on the same commit (e.g. `verify` from the
-   push to `develop`) satisfied it, so auto-merge cannot be queued. Wait for this PR's own run
-   with `gh pr checks <pr> --watch --required -i 15`, confirm with `gh pr checks <pr> --required`
-   that `branch-policy` passed in this PR's run, then merge with `gh pr merge <pr> --merge` and
-   continue with the `gh pr view`. This is the only manual merge allowed.
+   **Merge rule (steps 4 and 5).** Act on the `gh pr view`:
+   - `MERGED`: done (step 5: note `mergeCommit.oid`).
+   - `CLEAN` in `mergeStateStatus` but not `MERGED`: the checks are green and GitHub has not run
+     the queued auto-merge yet (it can take a minute or more, and watching the finished checks
+     again returns at once). Merge it directly with the same method,
+     `gh pr merge <pr> --merge`, then run the view again. "Already merged" from gh
+     is fine. On any other error, run the view again: `MERGED` is fine, anything else → stop and
+     report (step 9). This is safe: the rulesets have no bypass actors and require `verify` and
+     `branch-policy`, so GitHub refuses the merge while they are not green.
+   - `BLOCKED`: run `gh pr checks <pr> --required`. If `verify` or `branch-policy` is missing or
+     pending (not failed), watch again with `gh pr checks <pr> --watch --required -i 15` (up to 5
+     times, like "no checks reported"), then view and act again. Stop and report the PR URL and
+     its state (step 9) if a required check failed, or if it is still `BLOCKED` after that.
+   - `DIRTY`: a merge conflict: stop and report the PR URL and its state (step 9).
+   - `BEHIND` (step 5 only): `main` moved, see "If `main` moved" in step 5.
+   - `UNSTABLE`: mergeable, but a check that is not required failed or is still pending (e.g. the
+     Vercel preview). Run `gh pr checks <pr>` (all checks, without `--required`). A failed check is
+     red CI: stop and report it (step 9). If it is only pending, wait with
+     `gh pr checks <pr> --watch -i 15`, then view and act again.
+   - `UNKNOWN`: GitHub is still computing it; run the view up to twice more and act on the new
+     value. Still `UNKNOWN` → try the direct merge above; if GitHub refuses it, stop and
+     report (step 9).
+
+   **If `gh pr merge <pr> --merge --auto` is refused with "clean status"**, the PR is already
+   mergeable, so there is nothing to queue. That only happens when a successful `branch-policy`
+   run already exists on the same head commit (and `verify` too), e.g. for a re-created
+   develop → rc PR, or when the PR's own run finished before `--auto` was sent. Go straight to
+   the `gh pr checks` and `gh pr view` above and apply the merge rule.
 
 5. **rc → main (merge commit):**
    ```sh
@@ -83,11 +101,11 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    gh pr checks <pr> --watch --required -i 15
    gh pr view <pr> --json state,mergeStateStatus,mergeCommit   # MERGED: note mergeCommit.oid
    ```
-   **If `main` moved** (`mergeStateStatus` is `BEHIND`, or `branch-policy` fails because the rc
-   does not contain the current `main`): `main` is strict, so auto-merge would wait forever. Do
-   not update the rc. Close the release PR and delete the rc, then start again at step 1 (the
-   version may change). `--delete-branch` removes the remote and the local rc, so no
-   `git branch -D` follows:
+   Apply the merge rule from step 4. **If `main` moved** (`mergeStateStatus` is `BEHIND`, or
+   `branch-policy` fails because the rc does not contain the current `main`): `main` is strict,
+   so auto-merge would wait forever. Do not update the rc. Close the release PR and delete the
+   rc, then start again at step 1 (the version may change). `--delete-branch` removes the
+   remote and the local rc, so no `git branch -D` follows:
    ```sh
    git switch develop && gh pr close <pr> --delete-branch
    ```
@@ -102,14 +120,17 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    `<meta name="build-sha" content="<oid>">`, i.e. this exact commit and not the previous
    production, then that `/`, `/cs/` and the CV PDF answer 200. Its success is the release gate:
    ```sh
-   gh run list --workflow "Production smoke" --commit <oid> --limit 1 --json databaseId,status,conclusion
+   gh run list --workflow "Production smoke" --commit <oid> --limit 10 --json databaseId,status,conclusion
    gh run watch <databaseId> --exit-status   # red → step 9
-   gh run list --workflow "Production smoke" --commit <oid> --limit 1 --json conclusion
+   gh run list --workflow "Production smoke" --commit <oid> --limit 10 --json databaseId,status,conclusion
    ```
-   The last `conclusion` must be `success`: a skipped run (its job did not match a successful
-   Production deployment) also makes the watch exit 0. Anything else → step 9.
-   `[]` means Vercel is still building and the run does not exist yet. Then wait on the CI run
-   for the push to `main`, run the list again, and repeat up to 10 times:
+   Every deployment status triggers a run, and a run whose job did not match a successful
+   Production deployment ends `skipped`. So pick the newest run whose `conclusion` is not
+   `skipped` (a running one has an empty `conclusion`), watch that one, and list again: its
+   `conclusion` must be `success`, because a skipped or successful run both make the watch
+   exit 0. Anything else → step 9. Only `skipped` runs, or `[]`, mean Vercel is still building
+   and the gating run does not exist yet. Then wait on the CI run for the push to `main`, run
+   the list again, and repeat up to 10 times:
    ```sh
    gh run list --workflow CI --branch main --event push --commit <oid> --limit 1 --json databaseId
    gh run watch <databaseId> --exit-status
