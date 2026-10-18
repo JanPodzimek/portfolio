@@ -83,7 +83,8 @@ returns `[]` (the run is not created yet), run it again; still `[]` after 5 trie
    - `UNSTABLE`: mergeable, but a check that is not required failed or is still pending (e.g. the
      Vercel preview). Run `gh pr checks <pr>` (all checks, without `--required`). A failed check is
      red CI: stop and report it (step 9). If it is only pending, wait with
-     `gh pr checks <pr> --watch -i 15`, then view and act again.
+     `gh pr checks <pr> --watch -i 15`, then view and act again (up to 5 times, like `BLOCKED`).
+     Stop and report the PR URL and its state (step 9) if it is still `UNSTABLE` after that.
    - `UNKNOWN`: GitHub is still computing it; run the view up to twice more and act on the new
      value. Still `UNKNOWN` → try the direct merge above; if GitHub refuses it, stop and
      report (step 9).
