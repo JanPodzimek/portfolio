@@ -1,10 +1,17 @@
-// Keeps the prose in the agent-facing docs wrapped to 100 characters (Prettier's printWidth),
-// so diffs of a reworded sentence stay small and readable. Code fences, tables and the YAML
-// frontmatter (skill/agent `description:` lines) are exempt.
+// Keeps the prose in the agent-facing docs and docs/*.md wrapped to 100 characters (Prettier's
+// printWidth), so diffs of a reworded sentence stay small and readable. Code fences, tables and
+// the YAML frontmatter (skill/agent `description:` lines) are exempt.
 import { describe, expect, it } from 'vitest';
-import { docs, text } from './skillDocs';
+import { readdirSync } from 'node:fs';
+import { docs, root, text } from './skillDocs';
 
-const files = [...docs, 'docs/agentic-workflow.md', 'CLAUDE.md'];
+const files = [
+  ...docs,
+  ...readdirSync(new URL('docs/', root))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => `docs/${f}`),
+  'CLAUDE.md',
+];
 
 /** Prose lines longer than `max` characters, as `<line number>: <length>`. */
 function longProseLines(markdown: string, max = 100): string[] {
@@ -29,6 +36,11 @@ function longProseLines(markdown: string, max = 100): string[] {
 }
 
 describe('prose width', () => {
+  it('covers every doc in docs/', () => {
+    expect(files).toContain('docs/agentic-workflow.md');
+    expect(files).toContain('docs/architecture.md');
+  });
+
   it('ignores frontmatter, fences and tables but not prose', () => {
     const wide = 'x'.repeat(101);
     const sample = [
