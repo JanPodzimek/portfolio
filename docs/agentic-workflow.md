@@ -60,7 +60,8 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
 - Rulesets, no bypass actors, 0 required approvals, required checks `verify` + `branch-policy`:
   `main-policy` (`refs/heads/main`, merge commit only, strict: branch must be up to date),
   `develop-policy` (squash only, not strict), `rc-policy` (`refs/heads/rc/v*`, merge commit
-  only).
+  only; creating an rc branch does not require the checks, so `/deploy` can push it).
+- `tag-policy` protects release tags `refs/tags/v*`: they cannot be deleted or moved.
 - Auto-merge enabled; head branches deleted after merge (rc branches too; `main` and `develop`
   are protected). Squash commit message = PR title + body. Rebase merge disabled.
 
@@ -69,11 +70,15 @@ to this repository: Contents, Pull requests and Workflows read/write; Actions an
 statuses read; **no Administration**. GitHub then guarantees the agent cannot change settings
 or rulesets or delete the repository, whatever command it runs.
 
-**Permission rules are a safety net, not a security boundary.** `.claude/settings.json` denies
-destructive `gh` commands (repo delete/edit/rename/archive, `gh api` DELETE calls, rulesets and
-branch protection, `gh auth refresh`, secrets, release deletion) and allows the `gh pr`, `gh run`
-and deployment-status calls the flow needs. Pattern matching on command text can be bypassed;
-the token scope and the rulesets are what actually protect the repository.
+**Permission rules are a safety net, not a security boundary.** `.claude/settings.json` allows
+exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
+`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, read-only deployment status
+calls, and the production smoke-test `curl`. It denies destructive `gh` commands (repo
+delete/edit/rename/archive, `gh api` with DELETE/POST/PATCH/PUT or fields on deployments,
+rulesets, branch protection, `gh auth refresh`, secrets, release deletion).
+`tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it
+against these rules. Pattern matching on command text can be bypassed; the token scope and the
+rulesets are what actually protect the repository.
 
 ## Why two agents
 

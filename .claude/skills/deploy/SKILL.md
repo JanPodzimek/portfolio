@@ -20,11 +20,17 @@ GitHub auto-merge and happens when the required checks (`verify`, `branch-policy
 Report what failed and where; never work around it (no manual merges, no direct pushes to
 `main`/`develop`/`rc/*`, never squash or rebase into `main` or an rc).
 
-1. **Preconditions.** `git fetch origin --tags`. Working tree clean. `develop` has unreleased
-   commits (`git log --oneline origin/main..origin/develop` is not empty). The latest CI run on
-   `develop` succeeded on its current head:
-   `gh run list --branch develop --limit 1 --json conclusion,headSha` → `success` and
-   `headSha` equals `git rev-parse origin/develop`. Otherwise stop and say what is missing.
+1. **Preconditions.** Otherwise stop and say what is missing.
+   ```sh
+   git fetch origin --tags
+   git status --short                         # must be empty
+   git log --oneline origin/main..origin/develop   # must not be empty: unreleased work
+   gh run list --workflow CI --branch develop --event push --limit 1 --json conclusion,headSha
+   git rev-parse origin/develop
+   ```
+   The run must have `conclusion` `success` and its `headSha` must equal
+   `git rev-parse origin/develop`. No runs at all means nothing has been merged into `develop`
+   yet, so there is nothing to release.
 2. **Choose the version.** Previous release: `git describe --tags --abbrev=0 origin/main`
    (`v1.0.0` on `8477302` is the baseline). Find the work PRs in the release:
    ```sh
@@ -42,19 +48,26 @@ Report what failed and where; never work around it (no manual merges, no direct 
    ```sh
    gh pr create --base rc/vX.Y.Z --head develop --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch
-   gh pr view <pr> --json state -q .state      # repeat until MERGED
+   gh pr checks <pr> --watch --required
+   gh pr view <pr> --json state -q .state      # poll every ~30 s until MERGED
    ```
+   For every `gh pr checks` in this skill: if it says "no checks reported", run it again every
+   ~10 s for up to ~60 s before treating that as a failure. For every MERGED poll: if the PR is
+   not merged 20 minutes after its checks passed, stop and report (step 9).
 5. **rc → main (merge commit):**
    ```sh
    gh pr create --base main --head rc/vX.Y.Z --title "Release vX.Y.Z" --body-file <changes>
    gh pr merge <pr> --merge --auto
-   gh pr checks <pr> --watch
-   gh pr view <pr> --json state,mergeCommit    # repeat until MERGED; note mergeCommit.oid
+   gh pr checks <pr> --watch --required
+   gh pr view <pr> --json state,mergeCommit    # poll every ~30 s until MERGED; note mergeCommit.oid
    ```
-   `main` is strict (must be up to date). It only moves through releases, so it can only have
-   moved if two releases overlap: then `gh pr update-branch <pr>`; if that is rejected, stop and
-   report. `branch-policy` also fails if the rc does not contain the current `main`.
+   **If `main` moved** (`branch-policy` fails because the rc does not contain the current
+   `main`, or the strict ruleset reports the branch is out of date): do not update the rc.
+   Close the release PR and delete the rc, then start again at step 1 (the version may change):
+   ```sh
+   gh pr close <pr> --delete-branch
+   git switch develop && git branch -D rc/vX.Y.Z
+   ```
 6. **Tag the release** on the merge commit (`git rev-parse origin/main` must equal the
    `mergeCommit.oid` from step 5):
    ```sh
@@ -69,12 +82,13 @@ Report what failed and where; never work around it (no manual merges, no direct 
    `failure` or `error` → step 9. If no deployment record appears, poll the smoke test instead.
 8. **Smoke test production:**
    ```sh
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/ | head -1
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/cs/ | head -1
-   curl -sI https://portfolio-v2-sigma-two.vercel.app/cv/Jan-Podzimek-CV-EN.pdf | head -1
+   curl -sI https://portfolio-v2-sigma-two.vercel.app/
+   curl -sI https://portfolio-v2-sigma-two.vercel.app/cs/
+   curl -sI https://portfolio-v2-sigma-two.vercel.app/cv/Jan-Podzimek-CV-EN.pdf
    ```
-   All must be `200`. Report the version, the change list, the merge commit and the result.
-   Then `git switch develop && git pull`.
+   The first line of each response must be `HTTP/… 200`. Report the version, the change list, the merge commit and the result.
+   Then `git switch develop && git pull && git branch -D rc/vX.Y.Z` (GitHub already deleted the
+   remote rc after the merge).
 9. **On failure** report exactly what failed (step, output, PR or deployment URL) and point to
    the rollback: in Vercel → Deployments, promote the previous production deployment, then
    `/fix-bug`. Do not revert `main` by hand.

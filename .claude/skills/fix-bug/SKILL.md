@@ -30,10 +30,12 @@ Write the bug down like a good bug report before touching code:
    gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
    gh pr comment --body-file <review>   # the /review report, saved to a scratch file
    gh pr merge --squash --auto --delete-branch
-   gh pr checks --watch
-   gh pr view --json state -q .state    # repeat until MERGED
+   gh pr checks --watch --required
+   gh pr view --json state -q .state    # poll every ~30 s until MERGED
    git switch develop && git pull
    ```
-   A red check is an automatic stop: fix it on the same branch (the PR updates), then watch
-   again. Releasing to production is a separate step (`/deploy`, only when Jan asks).
+   Right after `gh pr create`, `gh pr checks` may say "no checks reported": run it again every
+   ~10 s for up to ~60 s before treating that as a failure. A red check is an automatic stop:
+   fix it on the same branch (the PR updates), then watch again. If the PR is not `MERGED`
+   20 minutes after the checks passed, stop and report the PR URL and its state. Releasing to production is a separate step (`/deploy`, only when Jan asks).
 7. **Report**: root cause, fix, the regression test that now guards it, the merged PR.
