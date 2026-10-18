@@ -23,6 +23,9 @@ const deny = bashPatterns(settings.permissions.deny);
 const matches = (patterns: RegExp[], command: string) => patterns.some((p) => p.test(command));
 const permitted = (command: string) => matches(allow, command) && !matches(deny, command);
 
+/** The release gate's deployment lookup, with the query in the path instead of `-X GET -f`. */
+const query = 'repos/JanPodzimek/portfolio/deployments?environment=Production&sha=x';
+
 const documented = docs.flatMap((file) =>
   commandsIn(text(file)).map((command) => ({ file, command })),
 );
@@ -32,6 +35,7 @@ describe('.claude/settings.json permissions', () => {
     expect(documented.length).toBeGreaterThan(30);
     expect(documented.map((d) => d.command)).toContain('git push origin v1.2.3');
     expect(documented.map((d) => d.command)).toContain('npm run verify');
+    expect(documented.map((d) => d.command)).toContain(`gh api '${query}' -q '.[0].id'`);
   });
 
   // Auto mode refuses `sleep` loops, so every wait must be a blocking command such as
@@ -62,10 +66,14 @@ describe('.claude/settings.json permissions', () => {
     expect(permitted(command)).toBe(true);
   });
 
+  // The query goes in the path, so no documented call needs a method flag or a field, and the
+  // deny list can reject every non-GET method and every field on deployments outright.
   it('keeps the gh api deployment calls read-only', () => {
-    for (const { command } of documented.filter((d) => d.command.startsWith('gh api'))) {
+    const calls = documented.filter((d) => d.command.startsWith('gh api'));
+    expect(calls.length).toBeGreaterThan(0);
+    for (const { command } of calls) {
       expect(command).toMatch(/deployments/);
-      if (/\s-[fF]\s|--(raw-)?field/.test(command)) expect(command).toMatch(/-X GET/);
+      expect(command).not.toMatch(/\s(-X|--method)|\s-[fF]|--(raw-)?field|--input/);
     }
   });
 
@@ -89,6 +97,22 @@ describe('.claude/settings.json permissions', () => {
     'gh api repos/JanPodzimek/portfolio -X PATCH -f default_branch=main',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q . -f state=success',
     'gh api repos/JanPodzimek/portfolio/deployments/1/statuses --input status.json',
+    // Any case of a non-GET method, also appended to the allowed query (the last -X wins).
+    `gh api '${query}' -q '.[0].id' -X Post`,
+    `gh api '${query}' -q . -X pAtCh`,
+    `gh api '${query}' -q . --method=Delete`,
+    `gh api '${query}' -q . -XPut`,
+    `gh api '${query}' -q . -X=pOsT`,
+    `gh api '${query}' -q . --method dElEtE`,
+    'gh api repos/JanPodzimek/portfolio/deployments -X GET -X Post -f ref=main',
+    // Fields on deployments, with and without a space.
+    `gh api '${query}' -q . -f ref=main`,
+    'gh api repos/JanPodzimek/portfolio/deployments -fref=main',
+    'gh api repos/JanPodzimek/portfolio/deployments -Fref=main',
+    'gh api repos/JanPodzimek/portfolio/deployments --field=ref=main',
+    'gh api repos/JanPodzimek/portfolio/deployments --raw-field ref=main',
+    'gh api repos/JanPodzimek/portfolio/deployments --input body.json',
+    'gh api repos/JanPodzimek/portfolio/deployments/1/statuses -q . -fstate=success',
     'gh api repos/JanPodzimek/portfolio/rulesets',
     'gh api -X PUT repos/JanPodzimek/portfolio/branches/main/protection',
     'gh auth refresh -s admin:org',
@@ -98,6 +122,16 @@ describe('.claude/settings.json permissions', () => {
     'git reset --hard origin/main',
   ])('denies `%s`', (command) => {
     expect(matches(deny, command)).toBe(true);
+  });
+
+  it.each([
+    'gh api repos/JanPodzimek/portfolio/deployments -X GET',
+    'gh api repos/JanPodzimek/portfolio/deployments -XGET',
+    'gh api repos/JanPodzimek/portfolio/deployments -X=get',
+    'gh api repos/JanPodzimek/portfolio/deployments --method GET',
+    'gh api repos/JanPodzimek/portfolio/deployments --method=get',
+  ])('does not deny the read-only method in `%s`', (command) => {
+    expect(matches(deny, command)).toBe(false);
   });
 
   it.each([
