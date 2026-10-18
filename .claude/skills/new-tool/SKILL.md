@@ -23,12 +23,29 @@ Steps:
 
 1. Agree the behaviour with Jan as a short spec: inputs, options, outputs, edge cases. Edge
    cases become unit tests.
-2. Delegate to the `implementer` agent on `feat/tool-<slug>` with the spec and the table above.
+2. Delegate to the `implementer` agent on `feat/tool-<slug>`, created from an up-to-date
+   `develop` (`git switch develop && git pull && git switch -c feat/tool-<slug>`), with the spec
+   and the table above.
 3. Requirements: runs fully in the browser (nothing sent anywhere), works from the keyboard,
    output has a copy button if it is text, `data-testid` prefix unique to the tool.
 4. `tests/unit/content.test.ts` checks the registry, routes and test files exist, so it fails
    until every piece is in place.
 5. `npm run verify`, then `/review`.
+6. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
+   verdict without blocker/major findings:
+   ```sh
+   git push -u origin feat/tool-<slug>
+   gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
+   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr merge --squash --auto --delete-branch
+   gh pr checks --watch --required
+   gh pr view --json state -q .state    # poll every ~30 s until MERGED
+   git switch develop && git pull
+   ```
+   Right after `gh pr create`, `gh pr checks` may say "no checks reported": run it again every
+   ~10 s for up to ~60 s before treating that as a failure. A red check is an automatic stop:
+   fix it on the same branch (the PR updates), then watch again. If the PR is not `MERGED`
+   20 minutes after the checks passed, stop and report the PR URL and its state. Releasing to production is a separate step (`/deploy`, only when Jan asks).
 
 Backlog ideas: JSON formatter/validator, GUID generator, Base64 encode/decode, Czech test data
 generator (IČO / rodné číslo with valid checksums).

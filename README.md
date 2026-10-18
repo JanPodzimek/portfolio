@@ -44,7 +44,10 @@ E2E tests run against the production build (`astro preview`) on desktop and mobi
 ## Deploy
 
 `main` is production. Vercel builds every push to `main` and a preview for every pull request.
-The flow is branch → PR → CI green → review → merge (see `.claude/skills/deploy/`).
+Work happens on `feat/<slug>` / `fix/<slug>` branches that are squash-merged into `develop`; a
+release goes `develop` → `rc/vX.Y.Z` (from current `main`) → `main` with merge commits and is
+tagged `vX.Y.Z`. All merges are GitHub auto-merges after green CI and a clean review (see [`docs/agentic-workflow.md`](docs/agentic-workflow.md#branching) and
+`.claude/skills/deploy/`).
 
 ## Working on it with Claude Code
 
@@ -55,7 +58,7 @@ This repo is set up for agentic development. Start with [`CLAUDE.md`](CLAUDE.md)
 | Project instructions    | `CLAUDE.md`                               | Architecture, stack rationale, hard rules, conventions                   |
 | Agents                  | `.claude/agents/`                         | `implementer` (builds, adds tests) and `reviewer` (read-only)            |
 | Skills (slash commands) | `.claude/skills/`                         | `/new-feature` `/fix-bug` `/new-tool` `/add-content` `/review` `/deploy` |
-| Hooks                   | `.claude/settings.json`, `.claude/hooks/` | Auto-format, block pushes to main, run checks before finishing           |
+| Hooks                   | `.claude/settings.json`, `.claude/hooks/` | Auto-format, enforce the branching policy, run checks before finishing   |
 
 More: [`docs/architecture.md`](docs/architecture.md) ·
 [`docs/agentic-workflow.md`](docs/agentic-workflow.md)
