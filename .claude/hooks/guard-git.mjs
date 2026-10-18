@@ -27,8 +27,12 @@ function currentBranch() {
 const protectedBranch = /^(main|master)$/;
 // `main` as a whole push refspec: `git push origin main`, `HEAD:main`, `feat/x:refs/heads/main`.
 const pushTargetsMain = /(\s|:|refs\/heads\/)(main|master)(\s|$)/;
+// Allow git's global options before the subcommand: `git -C dir push`, `git -c k=v commit`.
+const gitCmd = (sub) => new RegExp(`\\bgit(?:\\s+-[cC]\\s+\\S+)*\\s+${sub}\\b`);
 
-if (/\bgit\s+push\b/.test(command)) {
+// Note: the branch is checked before the command runs, so `git switch -c x && git commit`
+// issued from main is blocked. Switch branches in a separate command first.
+if (gitCmd('push').test(command)) {
   if (/(\s--force\b|\s--force-with-lease\b|\s-f\b|\s\+\S)/.test(command)) {
     block('force pushes are not allowed.');
   }
@@ -40,7 +44,7 @@ if (/\bgit\s+push\b/.test(command)) {
   }
 }
 
-if (/\bgit\s+commit\b/.test(command) && protectedBranch.test(currentBranch())) {
+if (gitCmd('commit').test(command) && protectedBranch.test(currentBranch())) {
   block('do not commit on main. Create a branch (feat/…, fix/…, content/…) first.');
 }
 

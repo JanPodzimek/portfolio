@@ -7,7 +7,7 @@ problem: >-
   Testové analýzy, testovací scénáře a dokumentace aplikace zaberou hodně času a jejich kvalita
   závisí na tom, kdo je píše a kolik má času.
 approach:
-  - Navrhl jsem tři specializované agenty, testového analytika, návrháře testů a autora dokumentace.
+  - 'Navrhl jsem tři specializované agenty: testového analytika, návrháře testů a autora dokumentace.'
   - Každý agent má vlastní instrukce, rozsah a formát výstupu.
   - Každý výstup před použitím zkontroluje tester.
 result:

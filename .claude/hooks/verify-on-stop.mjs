@@ -20,7 +20,9 @@ const relevant = changed
   .split('\n')
   .map((line) => line.slice(3).trim())
   .filter((path) =>
-    /^(src\/|tests\/|astro\.config|package\.json|tsconfig|eslint\.config)/.test(path),
+    /^(src\/|tests\/|astro\.config|package\.json|tsconfig|eslint\.config|vitest\.config|playwright\.config|\.claude\/hooks\/)/.test(
+      path,
+    ),
   );
 
 if (relevant.length === 0) process.exit(0);

@@ -8,9 +8,11 @@ interface Props {
   locale: Locale;
   title: string;
   description: string;
+  /** Error pages: no canonical/hreflang, keep out of search results. */
+  noindex?: boolean;
 }
 
-const { locale, title, description } = Astro.props;
+const { locale, title, description, noindex = false } = Astro.props;
 const dict = t(locale);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const alternates = locales.map((l) => ({
@@ -27,11 +29,17 @@ const defaultHref = alternates.find((a) => a.locale === defaultLocale)!.href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical.href} />
-    {alternates.map((a) => (
-      <link rel="alternate" hreflang={a.locale} href={a.href} />
-    ))}
-    <link rel="alternate" hreflang="x-default" href={defaultHref} />
+    {noindex ? (
+      <meta name="robots" content="noindex" />
+    ) : (
+      <>
+        <link rel="canonical" href={canonical.href} />
+        {alternates.map((a) => (
+          <link rel="alternate" hreflang={a.locale} href={a.href} />
+        ))}
+        <link rel="alternate" hreflang="x-default" href={defaultHref} />
+      </>
+    )}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta property="og:type" content="website" />

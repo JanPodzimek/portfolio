@@ -9,10 +9,10 @@ problem: >-
   Bylo to pomalé, opakované a snadno se v tom chybovalo.
 approach:
   - Navrhl jsem nástroj podle skutečného release checklistu týmu.
-  - Postavil jsem ho agentním programováním v GitHub Copilotu. Chování jsem definoval já a každou změnu jsem zreviewoval a otestoval.
+  - Postavil jsem ho agentním programováním v GitHub Copilotu. Chování jsem definoval já a každou změnu jsem zkontroloval a otestoval.
   - Vytváří RC větve napříč repozitáři a otevírá a merguje pull requesty s popisem.
   - Nasadí release candidate na dev pro regresní testy a pošle notifikaci do release kanálu v Teams.
 result:
   - Z velké části nahradil ruční proces releasu.
-  - Rozšířen o nasazení libovolné feature větve na zvolené testovací prostředí, používá ho celý QA tým.
+  - Nástroj jsem rozšířil o nasazení libovolné feature větve na zvolené testovací prostředí a dnes ho používá celý QA tým.
 ---

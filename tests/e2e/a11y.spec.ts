@@ -12,6 +12,7 @@ const pages = [
   '/cs/tools/char-counter/',
   '/how-it-was-built/',
   '/cs/how-it-was-built/',
+  '/this-does-not-exist/',
 ];
 
 for (const scheme of ['light', 'dark'] as const) {
