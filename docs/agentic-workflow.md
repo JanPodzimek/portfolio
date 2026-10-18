@@ -44,8 +44,10 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
 - Versioning is semver, starting at `v1.0.0`: a release with any `feat` bumps minor, fixes only
   bump patch.
 - Enforced by `.claude/hooks/guard-git.mjs` locally and the CI `branch-policy` job on PRs, both
-  using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts` and `tests/unit/guardGitHook.test.ts`).
-  GitHub rulesets enforce the merge methods (see bootstrap).
+  using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`
+  and `tests/unit/guardGitHook.test.ts`). The hook follows `cd`, `git -C`, branch switches in
+  `&&` chains, `$(…)` and `sh -c`, and blocks git run any other way. It is a guard rail for
+  agents; the real enforcement is the GitHub rulesets and required checks (see bootstrap).
 
 **Bootstrap (one-time, Jan on GitHub):** create `develop` from `main`; tag the current
 production commit `8477302` as `v1.0.0`; make `develop` the default branch; add rulesets:

@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    # `edited` re-runs branch-policy when a PR is retargeted to another base branch.
+    types: [opened, synchronize, reopened, edited]
 
 jobs:
   branch-policy:
