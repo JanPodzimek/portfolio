@@ -43,13 +43,13 @@ Steps:
    git switch develop && git pull
    ```
    Wait only with the blocking `gh pr checks --watch`, never with `sleep` (auto mode refuses
-   sleep loops). Right after `gh pr create` it may say "no checks reported": run it again a few
-   times before treating that as a failure. A red check is an automatic stop: fix it on the same
-   branch (the PR updates), then watch again. Auto-merge completes within seconds of the checks
-   passing; if `gh pr view` does not show `MERGED` yet, re-run the watch or the view a few
-   times. If the PR is not `MERGED` 20 minutes after the checks passed, stop and report the PR
-   URL and its state. Releasing to production is a separate step (`/deploy`, only when Jan
-   asks).
+   sleep loops). Right after `gh pr create` it may say "no checks reported": run it again (up to
+   5 times) before treating that as a failure. A red check is an automatic stop: fix it on the
+   same branch (the PR updates), then watch again. Auto-merge completes within seconds of the
+   checks passing, so `gh pr view` should show `MERGED`. If not, do up to 3 rounds of the checks
+   watch plus the view; still not `MERGED` → stop and report the PR URL and its state. `BLOCKED`
+   or `DIRTY` in `mergeStateStatus` means auto-merge cannot finish: stop and report. Releasing to
+   production is a separate step (`/deploy`, only when Jan asks).
 
 Backlog ideas: JSON formatter/validator, GUID generator, Base64 encode/decode, Czech test data
 generator (IČO / rodné číslo with valid checksums).

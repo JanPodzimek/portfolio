@@ -51,6 +51,13 @@ test.describe('Homepage', () => {
     );
   });
 
+  test('names the commit it was built from', async ({ page }) => {
+    // The "Production smoke" workflow matches this against the deployed commit ('local' here).
+    await page.goto('/');
+    const sha = await page.locator('meta[name="build-sha"]').getAttribute('content');
+    expect(sha).toBeTruthy();
+  });
+
   test('tool cards lead to the tools', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('tool-card-column-delimiter').click();

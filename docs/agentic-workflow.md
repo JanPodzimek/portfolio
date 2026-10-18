@@ -24,11 +24,12 @@ Jan: "/new-feature add a dark/light preview to the hero"
   ├─ PR into develop → review posted as a comment → squash auto-merge when CI is green
   └─ /deploy (only when Jan asks), end to end without manual steps:
         rc/vX.Y.Z from main ← develop (auto-merge) → main (auto-merge) → tag vX.Y.Z
-        → wait for Vercel production → smoke test (rollback pointer on failure)
+        → Vercel production → "Production smoke" run proves it serves that commit
+          (rollback pointer on failure)
 ```
 
 Nothing waits for a manual merge. The flow stops by itself on a red check, a review with
-blocker/major findings, or a failed smoke test.
+blocker/major findings, or a red "Production smoke" run.
 
 ## Branching
 
@@ -66,14 +67,17 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
   are protected). Squash commit message = PR title + body. Rebase merge disabled.
 
 **Credentials.** Daily automation should run with a fine-grained personal access token limited
-to this repository: Contents, Pull requests and Workflows read/write; Actions and Commit
-statuses read; **no Administration**. GitHub then guarantees the agent cannot change settings
-or rulesets or delete the repository, whatever command it runs.
+to this repository: Contents, Pull requests and Workflows read/write; Actions, Commit statuses
+and **Deployments: read**; **no Administration**. GitHub then guarantees the agent cannot change
+settings or rulesets or delete the repository, whatever command it runs. The "Production smoke"
+workflow needs nothing from this token: it runs in Actions with `permissions: {}` and only
+fetches the public site.
 
 **Permission rules are a safety net, not a security boundary.** `.claude/settings.json` allows
 exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
 `feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, read-only deployment status
-calls, and the production smoke-test `curl`. It denies destructive `gh` commands (repo
+calls, plus a `curl -sI` against production for manual checks (the release gate itself is
+the "Production smoke" workflow). It denies destructive `gh` commands (repo
 delete/edit/rename/archive, `gh api` with DELETE/POST/PATCH/PUT or fields on deployments,
 rulesets, branch protection, `gh auth refresh`, secrets, release deletion).
 `tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it

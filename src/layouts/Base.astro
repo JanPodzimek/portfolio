@@ -2,6 +2,7 @@
 import '@/styles/global.css';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
+import { VERCEL_GIT_COMMIT_SHA } from 'astro:env/server';
 import { t, locales, defaultLocale, switchLocalePath, type Locale } from '@/i18n/utils';
 
 interface Props {
@@ -48,6 +49,7 @@ const defaultHref = alternates.find((a) => a.locale === defaultLocale)!.href;
     <meta property="og:url" content={canonical.href} />
     <meta property="og:locale" content={locale === 'cs' ? 'cs_CZ' : 'en_US'} />
     <meta name="theme-color" content="#13675f" />
+    <meta name="build-sha" content={VERCEL_GIT_COMMIT_SHA} />
     <script is:inline>
       // Apply the theme before first paint to avoid a flash of the wrong colors.
       (() => {

@@ -67,13 +67,21 @@ describe('.claude/settings.json permissions', () => {
       expect(command).not.toMatch(/(^|[\s;|(])sleep\b/);
     }
     expect(text(file)).not.toMatch(/poll every/i);
+    // Inline `sleep 30` anywhere in the text; a bare `sleep` mention is fine.
+    expect(text(file)).not.toMatch(/`\s*sleep\s[^`]*`/);
   });
 
   it('documents the blocking waits', () => {
     const commands = documented.map((d) => d.command);
     expect(commands).toContain('gh pr checks --watch --required -i 15');
     expect(commands).toContain('gh pr checks x --watch --required -i 15');
-    expect(commands).toContain('gh run watch x');
+    expect(commands).toContain('gh run watch x --exit-status');
+  });
+
+  it('makes every `gh run watch` fail on a red run', () => {
+    const watches = documented.filter((d) => d.command.startsWith('gh run watch'));
+    expect(watches.length).toBeGreaterThan(0);
+    for (const { command } of watches) expect(command).toMatch(/--exit-status/);
   });
 
   it.each(documented)('$file: `$command` is allowed and not denied', ({ command }) => {
