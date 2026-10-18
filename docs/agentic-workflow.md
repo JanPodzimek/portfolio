@@ -31,6 +31,17 @@ Jan: "/new-feature add a dark/light preview to the hero"
 Nothing waits for a manual merge. The flow stops by itself on a red check, a review with
 blocker/major findings, or a red "Production smoke" run.
 
+**Merging without a wait.** Each merge is queued with `gh pr merge --auto`, then the skill blocks
+on `gh pr checks --watch --required` and reads `gh pr view`. GitHub can run the queued
+auto-merge a minute or more after the checks pass, and watching finished checks returns at once
+(auto mode refuses `sleep`), so a `CLEAN` but not yet `MERGED` PR is merged directly with the
+same method (squash into `develop`, merge commit into an rc and `main`). That cannot skip a
+check: the rulesets have no bypass actors and require `verify` and `branch-policy`, so GitHub
+refuses the merge until they are green. `BLOCKED` first re-checks the required checks (a
+missing or pending one is watched again), `UNSTABLE` looks at all checks (a failed one is red CI
+and stops the flow, a pending one is watched), `UNKNOWN` is viewed again, `DIRTY` stops.
+`tests/unit/skills.test.ts` guards this rule.
+
 ## Branching
 
 ```
@@ -48,11 +59,17 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
   `vX.Y.Z`.
 - Versioning is semver, starting at `v1.0.0`: a release with any `feat` bumps minor, fixes only
   bump patch.
-- Enforced by `.claude/hooks/guard-git.mjs` locally and the CI `branch-policy` job on PRs, both
+- Enforced by `.claude/hooks/guard-git.mjs` locally and the `branch-policy` check on PRs, both
   using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`
   and `tests/unit/guardGitHook.test.ts`). The hook follows `cd`, `git -C`, branch switches in
   `&&` chains, `$(…)` and `sh -c`, and blocks git run any other way. It is a guard rail for
   agents; the real enforcement is the GitHub rulesets and required checks (see below).
+- CI is two workflows. `ci.yml` runs `verify` on pull requests and on pushes to `main` and
+  `develop`. `branch-policy.yml` runs `branch-policy` on pull requests only (opened, synchronize,
+  reopened, edited), so push runs never report a `branch-policy` check. That matters: a job
+  skipped by `if:` still reports a check run, GitHub counts a skipped required check as passed,
+  and a release PR (develop → rc) from an already pushed commit would otherwise be mergeable
+  before its policy was evaluated. `tests/unit/workflows.test.ts` guards this.
 
 **Bootstrap (done).** GitHub is set up like this:
 
@@ -75,14 +92,20 @@ fetches the public site.
 
 **Permission rules are a safety net, not a security boundary.** `.claude/settings.json` allows
 exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
-`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, read-only deployment status
-calls, plus a `curl -sI` against production for manual checks (the release gate itself is
-the "Production smoke" workflow). It denies destructive `gh` commands (repo
-delete/edit/rename/archive, `gh api` with DELETE/POST/PATCH/PUT or fields on deployments,
-rulesets, branch protection, `gh auth refresh`, secrets, release deletion).
-`tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it
-against these rules. Pattern matching on command text can be bypassed; the token scope and the
-rulesets are what actually protect the repository.
+`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, and
+`node scripts/deployment-state.mjs <sha>`. No `curl` is allowed: the "Production smoke"
+workflow checks production, and a manual `curl` asks for permission first. It denies
+destructive `gh` commands (repo delete/edit/rename/archive, `gh auth refresh`, secrets, release
+deletion) and **every `gh api` command**. Glob rules cannot safely constrain how gh parses its
+flags (grouped short flags such as `-iXPOST` or `-if ref=main` hide the method and the fields).
+The one API read the release gate needs, a commit's Production deployment state, lives in
+`scripts/deployment-state.mjs` instead: it accepts only a 40-character hex sha, runs gh without
+a shell and sends only GETs. That stops argument injection, not a hijack: the script is only
+as trustworthy as the working tree, and whoever can edit the repository can already run code
+through `npm run *`. `tests/unit/settings.test.ts` extracts every command from the
+skills and agents, checks it against these rules and fails if any of them is a raw `gh api`
+call. Its matcher only approximates Claude Code's rule matching. Pattern matching on command
+text can be bypassed; the token scope and the rulesets are what actually protect the repository.
 
 ## Why two agents
 

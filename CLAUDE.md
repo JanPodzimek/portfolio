@@ -74,7 +74,8 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
 ## Workflow
 
 - New feature: `/new-feature` · bug: `/fix-bug` · new QA tool: `/new-tool` · text/case study:
-  `/add-content` · review: `/review` · release (rc → `main` → tag → production, end to end): `/deploy`.
+  `/add-content` · review: `/review` · release (rc → `main` → tag → production, end to end):
+  `/deploy`.
 - Implementation is done by the `implementer` agent; review by the separate, read-only
   `reviewer` agent. The author of a change never reviews it.
 

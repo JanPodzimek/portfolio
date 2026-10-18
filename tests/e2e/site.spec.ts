@@ -55,7 +55,7 @@ test.describe('Homepage', () => {
     // The "Production smoke" workflow matches this against the deployed commit ('local' here).
     await page.goto('/');
     const sha = await page.locator('meta[name="build-sha"]').getAttribute('content');
-    expect(sha).toBeTruthy();
+    expect(sha).toMatch(/^(local|[0-9a-f]{40})$/);
   });
 
   test('tool cards lead to the tools', async ({ page }) => {
