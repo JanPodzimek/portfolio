@@ -48,11 +48,17 @@ fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──
   `vX.Y.Z`.
 - Versioning is semver, starting at `v1.0.0`: a release with any `feat` bumps minor, fixes only
   bump patch.
-- Enforced by `.claude/hooks/guard-git.mjs` locally and the CI `branch-policy` job on PRs, both
+- Enforced by `.claude/hooks/guard-git.mjs` locally and the `branch-policy` check on PRs, both
   using the rules in `.claude/hooks/git-policy.mjs` (tested in `tests/unit/gitPolicy.test.ts`
   and `tests/unit/guardGitHook.test.ts`). The hook follows `cd`, `git -C`, branch switches in
   `&&` chains, `$(…)` and `sh -c`, and blocks git run any other way. It is a guard rail for
   agents; the real enforcement is the GitHub rulesets and required checks (see below).
+- CI is two workflows. `ci.yml` runs `verify` on pull requests and on pushes to `main` and
+  `develop`. `branch-policy.yml` runs `branch-policy` on pull requests only (opened, synchronize,
+  reopened, edited), so push runs never report a `branch-policy` check. That matters: a job
+  skipped by `if:` still reports a check run, GitHub counts a skipped required check as passed,
+  and a release PR (develop → rc) from an already pushed commit would otherwise be mergeable
+  before its policy was evaluated. `tests/unit/workflows.test.ts` guards this.
 
 **Bootstrap (done).** GitHub is set up like this:
 
