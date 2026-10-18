@@ -28,8 +28,7 @@
       "Bash(git rev-parse *)",
       "Bash(git describe *)",
       "Bash(git rev-list *)",
-      "Bash(gh api 'repos/JanPodzimek/portfolio/deployments?environment=Production&sha=*' -q *)",
-      "Bash(gh api repos/JanPodzimek/portfolio/deployments/*/statuses -q *)"
+      "Bash(node scripts/deployment-state.mjs *)"
     ],
     "deny": [
       "Bash(git push --force*)",
@@ -39,15 +38,7 @@
       "Bash(gh repo edit*)",
       "Bash(gh repo rename*)",
       "Bash(gh repo archive*)",
-      "Bash(gh api *-X*)",
-      "Bash(gh api *--method*)",
-      "Bash(gh api *deployments* -f*)",
-      "Bash(gh api *deployments* -F*)",
-      "Bash(gh api *deployments* --field*)",
-      "Bash(gh api *deployments* --raw-field*)",
-      "Bash(gh api *deployments* --input*)",
-      "Bash(gh api *rulesets*)",
-      "Bash(gh api *branches/*/protection*)",
+      "Bash(gh api *)",
       "Bash(gh auth refresh*)",
       "Bash(gh secret*)",
       "Bash(gh release delete*)",

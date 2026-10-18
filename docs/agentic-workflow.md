@@ -92,16 +92,18 @@ fetches the public site.
 
 **Permission rules are a safety net, not a security boundary.** `.claude/settings.json` allows
 exactly the commands the skills run, so the automated flow never stops at a prompt: pushes of
-`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, and read-only deployment status
-calls. No `curl` is allowed: the "Production smoke" workflow checks production, and a manual
-`curl` asks for permission first. It denies destructive `gh` commands: repo
-delete/edit/rename/archive, `gh api` with fields or `--input` on deployments, rulesets, branch
-protection, `gh auth refresh`, secrets and release deletion. It also denies `gh api` with any
-`-X` or `--method` flag, even `-X GET`, so quoting or extra spaces cannot slip a write method
-past the rules; the deployment lookup needs neither, as a plain GET with its query in the path.
-`tests/unit/settings.test.ts` extracts every command from the skills and agents and checks it
-against these rules. Pattern matching on command text can be bypassed; the token scope and the
-rulesets are what actually protect the repository.
+`feat/*`, `fix/*`, `rc/v*` and `v*` tags, `gh pr` and `gh run`, and
+`node scripts/deployment-state.mjs <sha>`. No `curl` is allowed: the "Production smoke"
+workflow checks production, and a manual `curl` asks for permission first. It denies
+destructive `gh` commands (repo delete/edit/rename/archive, `gh auth refresh`, secrets, release
+deletion) and **every `gh api` command**. Glob rules cannot safely constrain how gh parses its
+flags (grouped short flags such as `-iXPOST` or `-if ref=main` hide the method and the fields).
+The one API read the release gate needs, a commit's Production deployment state, lives in
+`scripts/deployment-state.mjs` instead: it accepts only a 40-character hex sha, runs gh without
+a shell and sends only GETs. `tests/unit/settings.test.ts` extracts every command from the
+skills and agents, checks it against these rules and fails if any of them is a raw `gh api`
+call. Its matcher only approximates Claude Code's rule matching. Pattern matching on command
+text can be bypassed; the token scope and the rulesets are what actually protect the repository.
 
 ## Why two agents
 
