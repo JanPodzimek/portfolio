@@ -50,10 +50,12 @@ describe('skills: merging a PR', () => {
     [...part.matchAll(/`(gh pr checks[^`]*)`/g)].map(([, c]) => c.replace(/\s+/g, ' '));
 
   it.each(mergeSkills)('%s: handles each merge state in its own bullet', (file) => {
-    for (const state of ['MERGED', 'CLEAN', 'BLOCKED', 'UNKNOWN', 'UNSTABLE'])
+    for (const state of ['MERGED', 'CLEAN', 'BLOCKED', 'DIRTY', 'UNKNOWN', 'UNSTABLE'])
       expect(bullet(file, state), state).not.toBe('');
     // UNKNOWN (still computing) and UNSTABLE (a non-required check) need different handling.
     expect(bullet(file, 'UNKNOWN')).not.toMatch(/`UNSTABLE`/);
+    // A merge conflict (DIRTY) stops at once; it must not hide inside the BLOCKED retry loop.
+    expect(bullet(file, 'BLOCKED')).not.toMatch(/DIRTY/);
   });
 
   it.each(mergeSkills)('%s: UNSTABLE looks at all checks, not only the required ones', (file) => {
