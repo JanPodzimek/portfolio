@@ -30,7 +30,7 @@ const concrete = (command: string) =>
     .replace(/<[^>]+>/g, 'x')
     .trim();
 
-/** Commands in fenced `sh` blocks and inline code starting with git/gh/curl, split on `&&`. */
+/** Commands in fenced `sh` blocks and inline git/gh/curl/npm/npx code, split on `&&`. */
 function commandsIn(markdown: string): string[] {
   const commands: string[] = [];
   for (const [, block] of markdown.matchAll(/```sh\n([\s\S]*?)```/g)) {
@@ -39,7 +39,8 @@ function commandsIn(markdown: string): string[] {
       if (command) commands.push(command);
     }
   }
-  for (const [, inline] of markdown.matchAll(/`((?:git|gh|curl) [^`]+)`/g)) commands.push(inline);
+  for (const [, inline] of markdown.matchAll(/`((?:git|gh|curl|npm|npx) [^`]+)`/g))
+    commands.push(inline);
   return commands.flatMap((c) => c.split('&&')).map(concrete);
 }
 
@@ -47,14 +48,32 @@ const docs = [
   ...readdirSync(new URL('.claude/skills/', root)).map((d) => `.claude/skills/${d}/SKILL.md`),
   ...readdirSync(new URL('.claude/agents/', root)).map((f) => `.claude/agents/${f}`),
 ];
+const text = (file: string) => readFileSync(new URL(file, root), 'utf8');
 const documented = docs.flatMap((file) =>
-  commandsIn(readFileSync(new URL(file, root), 'utf8')).map((command) => ({ file, command })),
+  commandsIn(text(file)).map((command) => ({ file, command })),
 );
 
 describe('.claude/settings.json permissions', () => {
   it('finds the commands in the skills', () => {
     expect(documented.length).toBeGreaterThan(30);
     expect(documented.map((d) => d.command)).toContain('git push origin v1.2.3');
+    expect(documented.map((d) => d.command)).toContain('npm run verify');
+  });
+
+  // Auto mode refuses `sleep` loops, so every wait must be a blocking command such as
+  // `gh pr checks --watch` or `gh run watch`, never "poll every N s".
+  it.each(docs)('%s: waits only with blocking commands, never sleep', (file) => {
+    for (const { command } of documented.filter((d) => d.file === file)) {
+      expect(command).not.toMatch(/(^|[\s;|(])sleep\b/);
+    }
+    expect(text(file)).not.toMatch(/poll every/i);
+  });
+
+  it('documents the blocking waits', () => {
+    const commands = documented.map((d) => d.command);
+    expect(commands).toContain('gh pr checks --watch --required -i 15');
+    expect(commands).toContain('gh pr checks x --watch --required -i 15');
+    expect(commands).toContain('gh run watch x');
   });
 
   it.each(documented)('$file: `$command` is allowed and not denied', ({ command }) => {
