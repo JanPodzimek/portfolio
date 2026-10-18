@@ -65,7 +65,7 @@ describe('deploy: release gate', () => {
       expect(command).toContain('--limit 10');
       expect(command).toContain('conclusion');
     }
-    expect(deploy).toMatch(/not `skipped`/);
+    expect(deploy).toMatch(/not\s+`skipped`/);
   });
 
   it('no longer asks to confirm branch-policy in "this PR\'s run"', () => {

@@ -23,8 +23,9 @@ Write the bug down like a good bug report before touching code:
 3. **Fix the cause**, not the symptom. Do not change the test to match the bug.
 4. **Prove it.** The new test passes; `npm run verify` passes.
 5. **Commit** as `Fix <what> (<where>)`, then run `/review`.
-6. **Ship it, fully automated** (no manual merge, nobody to wait for). Only with a `/review`
-   verdict without blocker/major findings:
+6. **Ship it, fully automated** (nobody to wait for; the only direct merge is the `CLEAN`
+   case below). Only with a `/review` verdict without blocker/major findings:
+
    ```sh
    git push -u origin fix/<slug>
    gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
@@ -34,12 +35,24 @@ Write the bug down like a good bug report before touching code:
    gh pr view --json state,mergeStateStatus,mergeCommit
    git switch develop && git pull
    ```
+
    Wait only with the blocking `gh pr checks --watch`, never with `sleep` (auto mode refuses
    sleep loops). Right after `gh pr create` it may say "no checks reported": run it again (up to
    5 times) before treating that as a failure. A red check is an automatic stop: fix it on the
-   same branch (the PR updates), then watch again. Auto-merge completes within seconds of the
-   checks passing, so `gh pr view` should show `MERGED`. If not, do up to 3 rounds of the checks
-   watch plus the view; still not `MERGED` → stop and report the PR URL and its state. `BLOCKED`
-   or `DIRTY` in `mergeStateStatus` means auto-merge cannot finish: stop and report. Releasing to
-   production is a separate step (`/deploy`, only when Jan asks).
+   same branch (the PR updates), then watch again. Then act on `gh pr view`:
+   - `MERGED`: done.
+   - `CLEAN` in `mergeStateStatus` but not `MERGED`: the checks are green and GitHub has not run
+     the queued auto-merge yet (it can take a minute or more, and watching the finished checks
+     again returns at once). Merge it directly with the same method,
+     `gh pr merge --squash --delete-branch`, then run the view again. "Already merged" from gh is
+     fine. This is safe: the rulesets have no bypass actors and require `verify` and
+     `branch-policy`, so GitHub refuses the merge while they are not green.
+   - `BLOCKED` or `DIRTY`: the PR cannot merge (a required check failed or is missing, or a
+     conflict): stop and report the PR URL and its state.
+   - `UNKNOWN` or `UNSTABLE`: GitHub is still computing it; run the view up to twice more and act
+     on the new value. Still one of these → try the direct merge above; if GitHub refuses it,
+     stop and report.
+
+   Releasing to production is a separate step (`/deploy`, only when Jan asks).
+
 7. **Report**: root cause, fix, the regression test that now guards it, the merged PR.

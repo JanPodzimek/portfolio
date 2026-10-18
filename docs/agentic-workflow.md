@@ -31,6 +31,15 @@ Jan: "/new-feature add a dark/light preview to the hero"
 Nothing waits for a manual merge. The flow stops by itself on a red check, a review with
 blocker/major findings, or a red "Production smoke" run.
 
+**Merging without a wait.** Each merge is queued with `gh pr merge --auto`, then the skill blocks
+on `gh pr checks --watch --required` and reads `gh pr view`. GitHub can run the queued
+auto-merge a minute or more after the checks pass, and watching finished checks returns at once
+(auto mode refuses `sleep`), so a `CLEAN` but not yet `MERGED` PR is merged directly with the
+same method (squash into `develop`, merge commit into an rc and `main`). That cannot skip a
+check: the rulesets have no bypass actors and require `verify` and `branch-policy`, so GitHub
+refuses the merge until they are green. `BLOCKED` or `DIRTY` stops the flow.
+`tests/unit/skills.test.ts` guards this rule.
+
 ## Branching
 
 ```
