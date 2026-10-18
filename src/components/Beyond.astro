@@ -1,0 +1,43 @@
+---
+import { Image } from 'astro:assets';
+import Section from './Section.astro';
+import hiking from '@/assets/img/hiking.jpg';
+import race from '@/assets/img/obstacle-race.jpg';
+import guitar from '@/assets/img/guitar.jpg';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { beyond } = t(Astro.props.locale);
+const photos = [
+  { src: hiking, alt: beyond.photos.hiking },
+  { src: race, alt: beyond.photos.race },
+  { src: guitar, alt: beyond.photos.guitar },
+];
+---
+
+<Section id="beyond" index="08" title={beyond.title}>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {beyond.items.map((item) => (
+      <div class="card p-5">
+        <h3 class="font-semibold">{item.title}</h3>
+        <p class="mt-2 text-muted">{item.text}</p>
+      </div>
+    ))}
+  </div>
+  <ul class="mt-6 grid gap-4 sm:grid-cols-3">
+    {photos.map((p) => (
+      <li>
+        <Image
+          src={p.src}
+          alt={p.alt}
+          width={800}
+          widths={[400, 800]}
+          sizes="(min-width: 640px) 320px, 100vw"
+          class="aspect-[4/3] w-full rounded-xl border border-line object-cover"
+        />
+      </li>
+    ))}
+  </ul>
+</Section>

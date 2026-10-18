@@ -1,0 +1,30 @@
+---
+import { t, type Locale } from '@/i18n/utils';
+import { site } from '@/data/site';
+
+interface Props {
+  locale: Locale;
+}
+const { contact } = t(Astro.props.locale);
+---
+
+<section id="contact" aria-labelledby="contact-title" class="container-page reveal py-16 sm:py-20">
+  <div class="card bg-accent-soft p-8 text-center sm:p-12">
+    <h2 id="contact-title" class="text-2xl font-bold tracking-tight sm:text-3xl">
+      {contact.title}
+    </h2>
+    <p class="mx-auto mt-3 max-w-xl text-muted">{contact.text}</p>
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      <a class="btn-primary" href={`mailto:${site.email}`} data-testid="contact-email">
+        {contact.email}
+      </a>
+      <a class="btn-secondary" href={site.linkedin} rel="noopener noreferrer" target="_blank">
+        {contact.linkedin}
+      </a>
+      <a class="btn-secondary" href={site.github} rel="noopener noreferrer" target="_blank">
+        {contact.github}
+      </a>
+    </div>
+    <p class="mt-4 font-mono text-sm text-muted">{site.email}</p>
+  </div>
+</section>

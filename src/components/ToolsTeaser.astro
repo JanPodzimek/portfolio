@@ -1,0 +1,25 @@
+---
+import Section from './Section.astro';
+import ToolCard from './ToolCard.astro';
+import { t, localePath, type Locale } from '@/i18n/utils';
+import { tools } from '@/data/tools';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const { toolsTeaser } = t(locale);
+---
+
+<Section id="tools" index="05" title={toolsTeaser.title} intro={toolsTeaser.intro}>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {tools.map((tool) => (
+      <ToolCard locale={locale} tool={tool} />
+    ))}
+  </div>
+  <p class="mt-6">
+    <a class="link" href={localePath(locale, '/tools/')}>
+      {toolsTeaser.all} →
+    </a>
+  </p>
+</Section>

@@ -1,0 +1,27 @@
+---
+import Base from '@/layouts/Base.astro';
+import { t, localePath } from '@/i18n/utils';
+
+// Static hosting serves a single 404 page for every URL, so it offers both languages.
+const dict = t('en');
+const cs = t('cs');
+---
+
+<Base locale="en" title={dict.meta.notFoundTitle} description={dict.notFound.text}>
+  <div class="container-page py-24 text-center">
+    <p class="font-mono text-sm text-accent">HTTP 404</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{dict.notFound.title}</h1>
+    <p class="mt-3 text-muted">{dict.notFound.text}</p>
+    <p lang="cs" class="mt-1 text-muted">
+      {cs.notFound.text}
+    </p>
+    <p class="mt-8 flex flex-wrap justify-center gap-3">
+      <a class="btn-primary" href={localePath('en', '/')}>
+        {dict.notFound.back}
+      </a>
+      <a class="btn-secondary" href={localePath('cs', '/')} lang="cs">
+        {cs.notFound.back}
+      </a>
+    </p>
+  </div>
+</Base>

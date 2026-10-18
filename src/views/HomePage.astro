@@ -1,0 +1,33 @@
+---
+import Base from '@/layouts/Base.astro';
+import Hero from '@/components/Hero.astro';
+import About from '@/components/About.astro';
+import Experience from '@/components/Experience.astro';
+import CaseStudies from '@/components/CaseStudies.astro';
+import HowITest from '@/components/HowITest.astro';
+import ToolsTeaser from '@/components/ToolsTeaser.astro';
+import Skills from '@/components/Skills.astro';
+import Credentials from '@/components/Credentials.astro';
+import Beyond from '@/components/Beyond.astro';
+import Contact from '@/components/Contact.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const { meta } = t(locale);
+---
+
+<Base locale={locale} title={meta.homeTitle} description={meta.homeDescription}>
+  <Hero locale={locale} />
+  <About locale={locale} />
+  <Experience locale={locale} />
+  <CaseStudies locale={locale} />
+  <HowITest locale={locale} />
+  <ToolsTeaser locale={locale} />
+  <Skills locale={locale} />
+  <Credentials locale={locale} />
+  <Beyond locale={locale} />
+  <Contact locale={locale} />
+</Base>

@@ -1,0 +1,171 @@
+---
+import ToolLayout from '@/components/ToolLayout.astro';
+import Segmented from '@/components/Segmented.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const dict = t(locale);
+const cd = dict.tools.columnDelimiter;
+const yesNo = [
+  { value: 'yes', label: dict.tools.yes },
+  { value: 'no', label: dict.tools.no },
+];
+---
+
+<ToolLayout locale={locale} toolKey="columnDelimiter">
+  <div
+    data-tool="column-delimiter"
+    data-msg-copied={dict.tools.copied}
+    data-msg-copy-failed={dict.tools.copyFailed}
+    class="grid gap-x-6 gap-y-8 md:grid-cols-2"
+  >
+    <div>
+      <label for="cd-input" class="mb-2 block text-sm font-semibold">
+        {cd.input}
+      </label>
+      <textarea
+        id="cd-input"
+        data-testid="cd-input"
+        rows="14"
+        class="field resize-y"
+        placeholder={cd.inputPlaceholder}
+        spellcheck="false"
+      ></textarea>
+    </div>
+    <div>
+      <label for="cd-output" class="mb-2 block text-sm font-semibold">
+        {cd.output}
+      </label>
+      <textarea
+        id="cd-output"
+        data-testid="cd-output"
+        rows="14"
+        class="field resize-y bg-bg"
+        readonly
+      ></textarea>
+      <div class="mt-2 flex items-center justify-between gap-3">
+        <p class="text-sm text-muted">
+          {cd.records}:{' '}
+          <output data-testid="cd-count" for="cd-input">
+            0
+          </output>
+        </p>
+        <div class="flex gap-2">
+          <button type="button" class="btn-secondary" data-action="clear" data-testid="cd-clear">
+            {dict.tools.clear}
+          </button>
+          <button type="button" class="btn-primary" data-action="copy" data-testid="cd-copy">
+            {dict.tools.copy}
+          </button>
+        </div>
+      </div>
+      <p role="status" class="mt-2 min-h-5 text-sm text-accent" data-testid="cd-status"></p>
+    </div>
+
+    <div>
+      <Segmented
+        legend={cd.delimiter}
+        name="delimiter"
+        checked=","
+        testid="cd-delimiter"
+        options={[
+          { value: ',', label: ',', name: `${cd.comma} (,)` },
+          { value: ';', label: ';', name: `${cd.semicolon} (;)` },
+          { value: '|', label: '|', name: `${cd.pipe} (|)` },
+          { value: '\\t', label: cd.tab },
+        ]}
+      />
+      <label for="cd-custom" class="mt-3 mb-1 block text-xs text-muted">
+        {cd.customDelimiter}
+      </label>
+      <input id="cd-custom" data-testid="cd-custom" class="field" value="," spellcheck="false" />
+    </div>
+    <Segmented
+      legend={cd.quotes}
+      name="quote"
+      checked="none"
+      testid="cd-quotes"
+      options={[
+        { value: 'none', label: cd.quoteNone },
+        { value: 'double', label: cd.quoteDouble },
+        { value: 'single', label: cd.quoteSingle },
+      ]}
+    />
+    <Segmented
+      legend={cd.singleLine}
+      name="singleLine"
+      checked="yes"
+      testid="cd-single-line"
+      options={yesNo}
+    />
+    <Segmented
+      legend={cd.removeDuplicates}
+      name="dedupe"
+      checked="no"
+      testid="cd-dedupe"
+      options={yesNo}
+    />
+  </div>
+</ToolLayout>
+
+<script>
+  import { delimit, decodeDelimiter, type QuoteStyle } from '@/lib/tools/columnDelimiter';
+
+  const root = document.querySelector<HTMLElement>('[data-tool="column-delimiter"]')!;
+  const input = root.querySelector<HTMLTextAreaElement>('#cd-input')!;
+  const output = root.querySelector<HTMLTextAreaElement>('#cd-output')!;
+  const custom = root.querySelector<HTMLInputElement>('#cd-custom')!;
+  const count = root.querySelector<HTMLOutputElement>('[data-testid="cd-count"]')!;
+  const status = root.querySelector<HTMLElement>('[data-testid="cd-status"]')!;
+  const delimiterRadios = root.querySelectorAll<HTMLInputElement>('input[name="delimiter"]');
+
+  const radio = (name: string) =>
+    root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
+
+  function update() {
+    const result = delimit(input.value, {
+      delimiter: decodeDelimiter(custom.value),
+      quote: (radio('quote') ?? 'none') as QuoteStyle,
+      singleLine: radio('singleLine') !== 'no',
+      removeDuplicates: radio('dedupe') === 'yes',
+    });
+    output.value = result.output;
+    count.value = String(result.count);
+    status.textContent = '';
+  }
+
+  // Preset buttons write into the custom field; typing a custom value deselects them.
+  for (const r of delimiterRadios) {
+    r.addEventListener('change', () => {
+      custom.value = r.value;
+      update();
+    });
+  }
+  custom.addEventListener('input', () => {
+    for (const r of delimiterRadios) r.checked = r.value === custom.value;
+    update();
+  });
+
+  root.addEventListener('change', update);
+  input.addEventListener('input', update);
+
+  root.querySelector('[data-action="clear"]')!.addEventListener('click', () => {
+    input.value = '';
+    update();
+    input.focus();
+  });
+
+  root.querySelector('[data-action="copy"]')!.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(output.value);
+      status.textContent = root.dataset.msgCopied ?? '';
+    } catch {
+      status.textContent = root.dataset.msgCopyFailed ?? '';
+    }
+  });
+
+  update();
+</script>

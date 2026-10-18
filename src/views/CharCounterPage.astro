@@ -1,0 +1,74 @@
+---
+import ToolLayout from '@/components/ToolLayout.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const dict = t(locale);
+const cc = dict.tools.charCounter;
+const stats = [
+  { key: 'characters', label: cc.characters },
+  { key: 'charactersNoSpaces', label: cc.charactersNoSpaces },
+  { key: 'words', label: cc.words },
+  { key: 'lines', label: cc.lines },
+  { key: 'bytes', label: cc.bytes },
+] as const;
+---
+
+<ToolLayout locale={locale} toolKey="charCounter">
+  <div data-tool="char-counter">
+    <label for="cc-input" class="mb-2 block text-sm font-semibold">
+      {cc.input}
+    </label>
+    <textarea
+      id="cc-input"
+      data-testid="cc-input"
+      rows="10"
+      class="field resize-y"
+      placeholder={cc.inputPlaceholder}
+    ></textarea>
+    <div class="mt-2 flex justify-end">
+      <button type="button" class="btn-secondary" data-action="clear" data-testid="cc-clear">
+        {dict.tools.clear}
+      </button>
+    </div>
+    <dl class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5" aria-live="polite">
+      {stats.map((s) => (
+        <div class="card p-4">
+          <dt class="text-xs text-muted">{s.label}</dt>
+          <dd
+            class="mt-1 font-mono text-2xl font-semibold"
+            data-stat={s.key}
+            data-testid={`cc-${s.key}`}
+          >
+            0
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</ToolLayout>
+
+<script>
+  import { countText, type TextStats } from '@/lib/tools/charCounter';
+
+  const root = document.querySelector<HTMLElement>('[data-tool="char-counter"]')!;
+  const input = root.querySelector<HTMLTextAreaElement>('#cc-input')!;
+  const cells = root.querySelectorAll<HTMLElement>('[data-stat]');
+
+  function update() {
+    const stats = countText(input.value);
+    for (const cell of cells)
+      cell.textContent = String(stats[cell.dataset.stat as keyof TextStats]);
+  }
+
+  input.addEventListener('input', update);
+  root.querySelector('[data-action="clear"]')!.addEventListener('click', () => {
+    input.value = '';
+    update();
+    input.focus();
+  });
+  update();
+</script>

@@ -1,0 +1,31 @@
+---
+import Section from './Section.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { experience } = t(Astro.props.locale);
+---
+
+<Section id="experience" index="02" title={experience.title}>
+  <article class="card p-6 sm:p-8">
+    <header class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+      <h3 class="text-lg font-semibold">
+        {experience.role} <span class="font-normal text-muted">· {experience.company}</span>
+      </h3>
+      <p class="font-mono text-sm text-muted">{experience.period}</p>
+    </header>
+    <p class="mt-1 text-sm text-muted">{experience.summary}</p>
+    <ul class="mt-6 space-y-3">
+      {experience.highlights.map((h) => (
+        <li class="flex gap-3">
+          <span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+          <p>
+            <strong class="font-semibold">{h.label}:</strong> {h.text}
+          </p>
+        </li>
+      ))}
+    </ul>
+  </article>
+</Section>

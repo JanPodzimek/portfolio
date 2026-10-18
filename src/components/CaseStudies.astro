@@ -1,0 +1,69 @@
+---
+import { getCollection } from 'astro:content';
+import Section from './Section.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const { caseStudies: labels } = t(locale);
+const studies = (await getCollection('caseStudies', (e) => e.id.startsWith(`${locale}/`))).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<Section id="work" index="03" title={labels.title} intro={labels.intro}>
+  <div class="grid gap-6">
+    {studies.map(({ data }, i) => (
+      <article class="card grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_1.4fr]" data-testid="case-study">
+        <div>
+          <p class="font-mono text-xs text-muted">case-{String(i + 1).padStart(2, '0')}</p>
+          <h3 class="mt-1 text-xl font-semibold">{data.title}</h3>
+          <p class="mt-2 text-muted">{data.summary}</p>
+          <p class="mt-5 text-xs font-semibold tracking-wider text-muted uppercase">
+            {labels.stack}
+          </p>
+          <ul class="mt-2 flex flex-wrap gap-1.5">
+            {data.stack.map((s) => (
+              <li class="rounded-md bg-accent-soft px-2 py-0.5 font-mono text-xs text-accent">
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <dl class="grid gap-4 text-sm leading-relaxed">
+          <div>
+            <dt class="font-semibold">{labels.problem}</dt>
+            <dd class="mt-1 text-muted">{data.problem}</dd>
+          </div>
+          <div>
+            <dt class="font-semibold">{labels.approach}</dt>
+            <dd class="mt-1">
+              <ul class="list-disc space-y-1 pl-5 text-muted marker:text-accent">
+                {data.approach.map((a) => (
+                  <li>{a}</li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt class="font-semibold">{labels.result}</dt>
+            <dd class="mt-1">
+              <ul class="space-y-1">
+                {data.result.map((r) => (
+                  <li class="flex gap-2">
+                    <span class="text-accent" aria-hidden="true">
+                      ✓
+                    </span>
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        </dl>
+      </article>
+    ))}
+  </div>
+</Section>

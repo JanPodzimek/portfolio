@@ -1,0 +1,17 @@
+---
+import Section from './Section.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const dict = t(Astro.props.locale);
+---
+
+<Section id="about" index="01" title={dict.about.title}>
+  <div class="max-w-3xl space-y-4 text-lg leading-relaxed">
+    {dict.about.paragraphs.map((p) => (
+      <p>{p}</p>
+    ))}
+  </div>
+</Section>

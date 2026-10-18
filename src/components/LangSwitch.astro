@@ -1,0 +1,22 @@
+---
+import { switchLocalePath, t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const target: Locale = locale === 'en' ? 'cs' : 'en';
+const dict = t(locale);
+---
+
+<a
+  href={switchLocalePath(Astro.url.pathname, target)}
+  hreflang={target}
+  lang={target}
+  aria-label={`${dict.nav.langSwitchShort} – ${dict.nav.langSwitchLabel}`}
+  data-testid="lang-switch"
+  class="rounded-md border border-line px-2.5 py-1.5 font-mono text-xs font-semibold text-muted hover:border-accent hover:text-accent"
+>
+  {dict.nav.langSwitchShort}
+</a>

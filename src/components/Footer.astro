@@ -1,0 +1,31 @@
+---
+import { t, localePath, type Locale } from '@/i18n/utils';
+import { site } from '@/data/site';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const dict = t(locale);
+---
+
+<footer class="border-t border-line">
+  <div class="container-page flex flex-col gap-3 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+    <p>
+      © {new Date().getFullYear()} {site.name} · {dict.footer.note}
+    </p>
+    <ul class="flex flex-wrap gap-x-5 gap-y-2">
+      <li>
+        <a class="link" href={localePath(locale, '/how-it-was-built/')}>
+          {dict.footer.built}
+        </a>
+      </li>
+      <li>
+        <a class="link" href={site.repo} rel="noopener noreferrer" target="_blank">
+          {dict.footer.source}
+        </a>
+      </li>
+    </ul>
+  </div>
+</footer>

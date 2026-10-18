@@ -1,0 +1,20 @@
+---
+import Section from './Section.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { skills } = t(Astro.props.locale);
+---
+
+<Section id="skills" index="06" title={skills.title}>
+  <dl class="card divide-y divide-line">
+    {skills.groups.map((g) => (
+      <div class="grid gap-1 p-5 sm:grid-cols-[12rem_1fr] sm:gap-6">
+        <dt class="font-semibold">{g.label}</dt>
+        <dd class="text-muted">{g.items}</dd>
+      </div>
+    ))}
+  </dl>
+</Section>

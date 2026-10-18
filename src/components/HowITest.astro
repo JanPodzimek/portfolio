@@ -1,0 +1,21 @@
+---
+import Section from './Section.astro';
+import { t, type Locale } from '@/i18n/utils';
+
+interface Props {
+  locale: Locale;
+}
+const { howITest } = t(Astro.props.locale);
+---
+
+<Section id="how-i-test" index="04" title={howITest.title} intro={howITest.intro}>
+  <ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {howITest.items.map((item, i) => (
+      <li class="card p-5">
+        <p class="font-mono text-xs text-accent">{String(i + 1).padStart(2, '0')}</p>
+        <h3 class="mt-1 font-semibold">{item.title}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-muted">{item.text}</p>
+      </li>
+    ))}
+  </ol>
+</Section>

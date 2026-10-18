@@ -1,0 +1,39 @@
+---
+/**
+ * Accessible segmented control: a radio group styled as joined buttons.
+ * Each option can show a short visual label and a longer accessible name.
+ */
+interface Option {
+  value: string;
+  label: string;
+  /** Accessible name when the visual label is a symbol (e.g. "," -> "Comma"). */
+  name?: string;
+}
+interface Props {
+  legend: string;
+  name: string;
+  options: Option[];
+  checked: string;
+  testid?: string;
+}
+const { legend, name, options, checked, testid } = Astro.props;
+---
+
+<fieldset data-testid={testid}>
+  <legend class="mb-2 text-sm font-semibold">{legend}</legend>
+  <div class="flex overflow-hidden rounded-lg border border-line bg-surface">
+    {options.map((o) => (
+      <label class="segment">
+        <input
+          type="radio"
+          class="sr-only"
+          name={name}
+          value={o.value}
+          checked={o.value === checked}
+          aria-label={o.name}
+        />
+        <span aria-hidden={o.name ? 'true' : undefined}>{o.label}</span>
+      </label>
+    ))}
+  </div>
+</fieldset>

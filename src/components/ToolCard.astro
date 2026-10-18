@@ -1,0 +1,24 @@
+---
+import { t, localePath, type Locale } from '@/i18n/utils';
+import type { Tool } from '@/data/tools';
+
+interface Props {
+  locale: Locale;
+  tool: Tool;
+  headingLevel?: 'h2' | 'h3';
+}
+const { locale, tool, headingLevel: Heading = 'h3' } = Astro.props;
+const dict = t(locale);
+const text = dict.tools[tool.key];
+---
+
+<a
+  href={localePath(locale, `/tools/${tool.slug}/`)}
+  class="card group block p-5 transition-colors hover:border-accent"
+  data-testid={`tool-card-${tool.slug}`}
+>
+  <p class="font-mono text-xs text-muted">/tools/{tool.slug}</p>
+  <Heading class="mt-1 font-semibold group-hover:text-accent">{text.title}</Heading>
+  <p class="mt-2 text-sm text-muted">{text.description}</p>
+  <p class="mt-4 text-sm font-semibold text-accent">{dict.toolsTeaser.open} →</p>
+</a>

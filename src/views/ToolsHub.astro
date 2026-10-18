@@ -1,0 +1,25 @@
+---
+import Base from '@/layouts/Base.astro';
+import ToolCard from '@/components/ToolCard.astro';
+import { t, type Locale } from '@/i18n/utils';
+import { tools } from '@/data/tools';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const dict = t(locale);
+---
+
+<Base locale={locale} title={dict.meta.toolsTitle} description={dict.meta.toolsDescription}>
+  <div class="container-page py-10 sm:py-14">
+    <p class="eyebrow">/tools</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{dict.tools.hubTitle}</h1>
+    <p class="mt-3 max-w-2xl text-muted">{dict.tools.hubIntro}</p>
+    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+      {tools.map((tool) => (
+        <ToolCard locale={locale} tool={tool} headingLevel="h2" />
+      ))}
+    </div>
+  </div>
+</Base>

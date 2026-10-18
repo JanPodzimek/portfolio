@@ -1,0 +1,50 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import LangSwitch from './LangSwitch.astro';
+import { t, localePath, type Locale } from '@/i18n/utils';
+import { site } from '@/data/site';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const dict = t(locale);
+const home = localePath(locale, '/');
+const links = [
+  { href: `${home}#about`, label: dict.nav.about },
+  { href: `${home}#work`, label: dict.nav.work },
+  { href: localePath(locale, '/tools/'), label: dict.nav.tools },
+  { href: `${home}#contact`, label: dict.nav.contact },
+];
+---
+
+<header class="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">
+  <div class="container-page flex h-16 items-center justify-between gap-4">
+    <a href={home} class="font-semibold tracking-tight" data-testid="brand">
+      {site.name}
+    </a>
+    <nav aria-label={dict.nav.menu} class="flex items-center gap-1 sm:gap-2">
+      <ul class="hidden items-center gap-1 md:flex">
+        {links.map((l) => (
+          <li>
+            <a
+              href={l.href}
+              class="rounded-md px-3 py-2 text-sm font-medium text-muted hover:text-ink"
+            >
+              {l.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={localePath(locale, '/tools/')}
+        class="rounded-md px-3 py-2 text-sm font-medium text-muted hover:text-ink md:hidden"
+      >
+        {dict.nav.tools}
+      </a>
+      <LangSwitch locale={locale} />
+      <ThemeToggle label={dict.nav.themeToggle} />
+    </nav>
+  </div>
+</header>

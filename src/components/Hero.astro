@@ -1,0 +1,77 @@
+---
+import { Image } from 'astro:assets';
+import profile from '@/assets/img/profile.jpg';
+import { t, type Locale } from '@/i18n/utils';
+import { site } from '@/data/site';
+
+interface Props {
+  locale: Locale;
+}
+const dict = t(Astro.props.locale);
+---
+
+<section class="relative overflow-hidden border-b border-line">
+  <div class="hero-dots pointer-events-none absolute inset-0" aria-hidden="true"></div>
+  <div class="container-page relative grid items-center gap-10 py-16 sm:py-24 md:grid-cols-[1fr_auto]">
+    <div>
+      <p class="eyebrow">{dict.hero.eyebrow}</p>
+      <h1 class="mt-3 text-4xl font-extrabold tracking-tight sm:text-6xl">{site.name}</h1>
+      <p class="mt-5 max-w-2xl text-lg text-muted sm:text-xl">{dict.hero.pitch}</p>
+      <ul class="mt-6 flex flex-wrap gap-2" data-testid="hero-facts">
+        {dict.hero.facts.map((fact) => (
+          <li class="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 font-mono text-xs">
+            <span class="text-accent" aria-hidden="true">
+              ✓
+            </span>
+            {fact}
+          </li>
+        ))}
+      </ul>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a class="btn-primary" href={site.cv} download data-testid="cv-download">
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          {dict.hero.cv}
+        </a>
+        <a class="btn-secondary" href="#contact">
+          {dict.hero.contact}
+        </a>
+        <a class="btn-secondary" href={site.linkedin} rel="noopener noreferrer" target="_blank">
+          LinkedIn
+        </a>
+        <a class="btn-secondary" href={site.github} rel="noopener noreferrer" target="_blank">
+          GitHub
+        </a>
+      </div>
+    </div>
+    <Image
+      src={profile}
+      alt={dict.hero.photoAlt}
+      width={288}
+      height={288}
+      loading="eager"
+      class="order-first size-32 rounded-full border-4 border-surface object-cover shadow-lg ring-1 ring-line sm:size-48 md:order-none md:mx-auto md:size-72"
+    />
+  </div>
+</section>
+
+<style>
+  .hero-dots {
+    opacity: 0.7;
+    background-image: radial-gradient(var(--line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(to bottom, black, transparent);
+  }
+</style>

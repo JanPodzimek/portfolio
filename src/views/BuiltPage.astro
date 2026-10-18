@@ -1,0 +1,42 @@
+---
+import Base from '@/layouts/Base.astro';
+import { t, type Locale } from '@/i18n/utils';
+import { site } from '@/data/site';
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const dict = t(locale);
+const b = dict.built;
+---
+
+<Base locale={locale} title={dict.meta.builtTitle} description={dict.meta.builtDescription}>
+  <article class="container-page max-w-3xl py-10 sm:py-14">
+    <p class="eyebrow">/how-it-was-built</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{b.title}</h1>
+    <p class="mt-4 text-lg text-muted">{b.intro}</p>
+    <ol class="mt-10 space-y-8">
+      {b.sections.map((s, i) => (
+        <li class="grid gap-2 sm:grid-cols-[3rem_1fr]">
+          <span class="font-mono text-sm text-accent">{String(i + 1).padStart(2, '0')}</span>
+          <div>
+            <h2 class="text-lg font-semibold">{s.title}</h2>
+            <p class="mt-2 leading-relaxed text-muted">{s.text}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+    <h2 class="mt-12 text-lg font-semibold">{b.stackTitle}</h2>
+    <ul class="mt-3 flex flex-wrap gap-2">
+      {b.stack.map((s) => (
+        <li class="rounded-md bg-accent-soft px-2.5 py-1 font-mono text-xs text-accent">{s}</li>
+      ))}
+    </ul>
+    <p class="mt-10">
+      <a class="btn-primary" href={site.repo} target="_blank" rel="noopener noreferrer">
+        {b.repoCta} →
+      </a>
+    </p>
+  </article>
+</Base>
