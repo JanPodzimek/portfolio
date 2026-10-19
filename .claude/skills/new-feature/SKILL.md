@@ -17,41 +17,70 @@ argument-hint: <what to build>
    - [ ] All new text in `src/i18n/en.ts` and `src/i18n/cs.ts`
    - [ ] New pages: EN + CZ route files, added to `tests/e2e/a11y.spec.ts`
    - [ ] `npm run verify` passes
-4. **Local review loop.** Nothing leaves the machine before it ends.
+4. **Local review loop.** Nothing leaves the machine before it ends. One `reviewer` follows the
+   change across rounds; a fresh one only appears as a fallback or as the final gate.
 
-   - **A new reviewer every round.** Start each round as a new agent with the Agent tool,
-     `subagent_type: reviewer`. Never resume or message an earlier reviewer: each round reads
-     the change cold.
-   - **A fixed prompt.** Fill in this template and send nothing else. Never pass the
-     implementer's summary, rationale or hand-off text.
+   - **Round 1: a new reviewer.** Start it with the Agent tool, `subagent_type: reviewer`, and
+     keep its agent id. Fill in this full-diff template and send nothing else. Never pass the
+     implementer's summary, rationale or hand-off text, in any round.
 
      ```md
-     Review branch <branch> against develop. Round <n> of at most 5.
-     Review the full diff fresh, then judge every previous finding: closed, still open or
+     Review branch <branch> against develop. Round <n> of at most 5. Full-diff review.
+     Review the whole branch diff, then judge every previous finding: closed, still open or
      dispute accepted. Return the report in your exact format, including the Loop line.
 
-     Previous round's findings and the implementer's responses (round 1: none):
+     Previous findings and the implementer's responses (round 1: none):
 
      | #   | Severity | File:line | Finding | Response                            |
      | --- | -------- | --------- | ------- | ----------------------------------- |
      | 1   | <sev>    | <where>   | <what>  | fixed in <sha> / disputed: <reason> |
      ```
 
+   - **Rounds 2 and later: the same reviewer.** SendMessage to that agent id with this delta
+     template and nothing else (Previous Head is the `**Head:**` of its last report):
+
+     ```md
+     Round <n> of at most 5 on branch <branch>. Resumed round.
+     Previous Head: <sha>. New HEAD: <sha>.
+     Review the delta and how it interacts with the rest of the branch, then judge every
+     previous finding. Return the report in your exact format, including the Loop line.
+
+     Previous findings and the implementer's responses:
+
+     | #   | Severity | File:line | Finding | Response                            |
+     | --- | -------- | --------- | ------- | ----------------------------------- |
+     | 1   | <sev>    | <where>   | <what>  | fixed in <sha> / disputed: <reason> |
+     ```
+
+   - **Fallback.** If the reviewer cannot be resumed (the session restarted or was compacted,
+     or the id is unknown), start a new reviewer with the full-diff template, previous findings
+     table included, and keep its id for the rounds after.
    - **Exit** when a round's report says `**Loop:** done`: no blocker, major or minor finding
      and no unresolved dispute on a blocking item (every blocker, major or minor previous item
      closed or its dispute accepted). Nits never block, open or disputed: fix them if cheap (a
      fix after the last round needs one more round, because the approval is for the reviewed
-     commit), otherwise list them in the PR body.
+     commit), otherwise list them in the PR body. Then go to the final gate.
    - **Otherwise** send the findings table, nits included, to the **same** `implementer` that
      made the change (SendMessage to it, never a new one). It answers every finding with
      `fixed in <sha>` (a commit) or `disputed: <reason>`. The findings plus those responses are
      the next round's prompt.
-   - **Cap: 5 rounds.** If round 5 still has blocking findings or an unresolved dispute on a
-     blocking item, stop: do not push, and ask Jan, with the last report and the open items.
-   - **Approve.** Save the final report to the scratchpad (e.g. `review-final.md`; it becomes the
-     PR comment). Check that `git status --short` is empty and that `git rev-parse HEAD` equals
-     the report's `**Head:**`. Then, with the Write tool (not a shell command), write that sha on
-     one line to `<git-dir>/claude-review/approved`, where `<git-dir>` is the output of
+   - **Final gate, only when risky.** After the persistent reviewer reports `**Loop:** done`,
+     start a **new** `reviewer` for one pass with the full-diff template (previous findings:
+     none) if any of these hold: the loop took 3 or more rounds; the reviewer accepted a
+     dispute; `git diff --name-only develop...HEAD` lists a path under `.claude/hooks/`,
+     `.github/workflows/` or `scripts/`, or `.claude/settings.json`. Its blocker, major and
+     minor findings go back into the same loop: the implementer fixes them and the persistent
+     reviewer checks them in a delta round, with no second gate. Its nits go in the PR body.
+     No trigger: the persistent reviewer's approval is final.
+   - **Cap: 5 rounds.** The cap counts every round, including the final gate. If round 5 still
+     has blocking findings or an unresolved dispute on a blocking item, stop: do not push, and
+     ask Jan, with the last report and the open items.
+   - **Approve.** Only after the final gate passed or was skipped. Save the final report (the
+     last one that says `**Loop:** done`, plus the gate's report if it ran) to the scratchpad
+     (e.g. `review-final.md`; it becomes the PR comment). Check that `git status --short` is
+     empty and that `git rev-parse HEAD` equals the report's `**Head:**`. Then, with the
+     Write tool (not a shell command), write that sha on one line to
+     `<git-dir>/claude-review/approved`, where `<git-dir>` is the output of
      `git rev-parse --absolute-git-dir`. The guard-git hook refuses to push a feat/fix branch or
      open its PR until that file holds the current HEAD.
 
