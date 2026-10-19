@@ -168,6 +168,10 @@ describe('work skills: local review loop', () => {
       '.github/workflows/',
       '.claude/settings.json',
       'scripts/',
+      // the files that define the review process itself
+      '.claude/agents/',
+      '.claude/skills/',
+      'CLAUDE.md',
     ])
       expect(block).toContain(`\`${path}\``);
     // what happens to its findings

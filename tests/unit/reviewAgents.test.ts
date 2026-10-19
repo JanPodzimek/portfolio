@@ -148,4 +148,18 @@ describe('docs: one reviewer per change', () => {
     expect(workflow).toMatch(/PR #11/);
     expect(workflow).toMatch(/anti-anchoring/);
   });
+
+  it('list every final-gate path trigger, the review process files included', () => {
+    for (const path of [
+      '.claude/hooks/',
+      '.github/workflows/',
+      '.claude/settings.json',
+      'scripts/',
+      '.claude/agents/',
+      '.claude/skills/',
+      'CLAUDE.md',
+    ])
+      expect(workflow).toContain(`\`${path}\``);
+    expect(claude).toMatch(/agents, skills or CLAUDE\.md/);
+  });
 });

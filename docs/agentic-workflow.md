@@ -27,8 +27,9 @@ Jan: "/new-feature add a dark/light preview to the hero"
   │     ├─ otherwise → same implementer: "fixed in <sha>" or "disputed: <reason>" per finding
   │     ├─ done (no blocker/major/minor finding, no unresolved dispute on one; nits never
   │     │   block) → final gate, only when risky (3+ rounds, an accepted dispute, or hooks,
-  │     │   workflows, settings or scripts touched): NEW reviewer, one full-diff pass; its
-  │     │   blocking findings go back into the loop (no second gate) → approve HEAD
+  │     │   workflows, settings, scripts, agents, skills or CLAUDE.md touched): NEW
+  │     │   reviewer, one full-diff pass; its blocking findings go back into the loop (no
+  │     │   second gate) → approve HEAD
   │     └─ still not done after round 5 (the gate counts) → stop and ask Jan
   ├─ push → PR into develop → final review posted as a comment → squash auto-merge on green CI
   │     (no review on the PR; a red-CI fix gets no new round unless it changes src/ behaviour)
@@ -147,8 +148,9 @@ under pushback (a second dispute on the same item goes to Jan), and allow new fi
 already-passed code only at blocker or major. And a **fresh final gate**, one full-diff pass
 by a new reviewer, runs when anchoring is likely or a miss is expensive: the loop took 3 or
 more rounds, a dispute was accepted, or the diff touches `.claude/hooks/`, `.github/workflows/`,
-`.claude/settings.json` or `scripts/`. The implementer stays the same agent for the whole loop
-too: it keeps the context it needs to fix things.
+`.claude/settings.json`, `scripts/`, or the files that define the review process itself
+(`.claude/agents/`, `.claude/skills/`, `CLAUDE.md`). The implementer stays the same agent for
+the whole loop too: it keeps the context it needs to fix things.
 
 ## Agents
 

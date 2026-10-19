@@ -84,10 +84,11 @@ Steps:
      start a **new** `reviewer` for one pass with the full-diff template (previous findings:
      none) if any of these hold: the loop took 3 or more rounds; the reviewer accepted a
      dispute; `git diff --name-only develop...HEAD` lists a path under `.claude/hooks/`,
-     `.github/workflows/` or `scripts/`, or `.claude/settings.json`. Its blocker, major and
-     minor findings go back into the same loop: the implementer fixes them and the persistent
-     reviewer checks them in a delta round, with no second gate. Its nits go in the PR body.
-     No trigger: the persistent reviewer's approval is final.
+     `.github/workflows/`, `scripts/`, `.claude/agents/` or `.claude/skills/`, or
+     `.claude/settings.json` or `CLAUDE.md`. Its blocker, major and minor findings go back
+     into the same loop: the implementer fixes them and the persistent reviewer checks them in
+     a delta round, with no second gate. Its nits go in the PR body. No trigger: the
+     persistent reviewer's approval is final.
    - **Cap: 5 rounds.** The cap counts every round, including the final gate. If round 5 still
      has blocking findings or an unresolved dispute on a blocking item, stop: do not push, and
      ask Jan, with the last report and the open items. Likewise, if the gate would be round

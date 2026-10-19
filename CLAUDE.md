@@ -86,8 +86,8 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
   `reviewer` agent. The author of a change never reviews it. The work skills run the local
   review loop themselves: one reviewer per change, resumed each round with the delta,
   findings back to the same implementer (fix with a commit or dispute with a reason), a fresh
-  final gate when the loop was long, a dispute was accepted or hooks, workflows, settings or
-  scripts changed; then push, PR and auto-merge.
+  final gate when the loop was long, a dispute was accepted or hooks, workflows, settings,
+  scripts, agents, skills or CLAUDE.md changed; then push, PR and auto-merge.
 
 ## Conventions
 
