@@ -83,11 +83,7 @@ describe('guard-git hook: local review gate', () => {
   const approve = (dir: string, sha: string) => {
     const marker = join(git(dir, 'rev-parse', '--absolute-git-dir'), 'claude-review');
     mkdirSync(marker, { recursive: true });
-    writeFileSync(
-      join(marker, 'approved'),
-      `${sha}
-`,
-    );
+    writeFileSync(join(marker, 'approved'), `${sha}\n`);
   };
   const unapprove = (dir: string) =>
     rmSync(join(git(dir, 'rev-parse', '--absolute-git-dir'), 'claude-review'), {
@@ -151,8 +147,12 @@ describe('guard-git hook: local review gate', () => {
     expect(runHook(worktree, 'git push -u origin fix/y').code).toBe(2);
     approve(worktree, git(worktree, 'rev-parse', 'HEAD'));
     expect(runHook(worktree, 'git push -u origin fix/y').code).toBe(0);
-    // the main checkout's marker does not count for the worktree, and vice versa
+    // the worktree's marker does not count for the main checkout, and vice versa
     expect(runHook(repo, 'git push -u origin feat/x').code).toBe(2);
+    unapprove(worktree);
+    approve(repo, git(repo, 'rev-parse', 'HEAD'));
+    expect(runHook(repo, 'git push -u origin feat/x').code).toBe(0);
+    expect(runHook(worktree, 'git push -u origin fix/y').code).toBe(2);
   });
 
   it.each([

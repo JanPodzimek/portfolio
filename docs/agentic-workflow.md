@@ -22,7 +22,8 @@ Jan: "/new-feature add a dark/light preview to the hero"
   │     ├─ NEW reviewer agent (read-only, fresh context, fixed prompt: branch, round,
   │     │   previous findings + responses): full diff vs CLAUDE.md, checks, risks, findings
   │     │   table with severity, status of each previous finding, Loop: done | another round
-  │     ├─ done (no blocker/major/minor, no unresolved dispute) → approve HEAD, leave the loop
+  │     ├─ done (no blocker/major/minor finding, no unresolved dispute on one; nits never
+  │     │   block) → approve HEAD, leave the loop
   │     ├─ otherwise → same implementer: "fixed in <sha>" or "disputed: <reason>" per finding
   │     └─ still not done after round 5 → stop and ask Jan
   ├─ push → PR into develop → final review posted as a comment → squash auto-merge on green CI

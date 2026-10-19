@@ -71,7 +71,8 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
    approved HEAD), the CI `branch-policy` check and GitHub rulesets enforce this; no force
    pushes.
 6. **Definition of done:** `npm run verify` passes and the last round of the local review loop
-   has no blocker, major or minor findings and no unresolved dispute (nits go in the PR body).
+   has no blocker, major or minor findings and no unresolved dispute on a blocker, major or
+   minor item (nits go in the PR body).
 7. **Facts about Jan come from his CV or from Jan.** Never invent numbers, employers, tools or
    results. Internal Alza details (system names, screenshots, data) never go on the site.
 
