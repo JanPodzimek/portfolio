@@ -37,8 +37,8 @@ const UNKNOWN_BRANCH =
 
 const REVIEW_HOW =
   'Run the local review loop of the work skill (/new-feature, /fix-bug, /new-tool or ' +
-  '/add-content) until a fresh reviewer has no blocker, major or minor findings; it writes the ' +
-  'current HEAD sha to .git/claude-review/approved (in the git dir, see git rev-parse ' +
+  '/add-content) until it ends with **Loop:** done (and the final gate passed when triggered); ' +
+  'it writes the current HEAD sha to .git/claude-review/approved (in the git dir, see git rev-parse ' +
   '--absolute-git-dir). Then push and open the PR.';
 
 /**
