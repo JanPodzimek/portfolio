@@ -353,3 +353,103 @@ describe('checkGitCommand with a cwd outside the project', () => {
     );
   });
 });
+
+describe('checkGitCommand: local review gate', () => {
+  // The hook reads these facts for the current branch; the policy itself stays pure.
+  const project = { projectDir: 'C:\\repos\\portfolio', cwd: '/c/repos/portfolio' };
+  const head = 'b'.repeat(40);
+  const older = 'a'.repeat(40);
+  const reviews = {
+    none: { head, approved: '', approvedIsAncestor: false, onOrigin: false },
+    stale: { head, approved: older, approvedIsAncestor: true, onOrigin: false },
+    unrelated: { head, approved: older, approvedIsAncestor: false, onOrigin: true },
+    approved: { head, approved: head, approvedIsAncestor: false, onOrigin: false },
+    // a red-CI fix on top of the reviewed commit, on a branch that already has a PR
+    redCiFix: { head, approved: older, approvedIsAncestor: true, onOrigin: true },
+  };
+  type Review = keyof typeof reviews;
+  const check = (command: string, branch: string, review: Review) =>
+    checkGitCommand(command, branch, { ...project, review: reviews[review] });
+
+  const publishing = [
+    ['git push -u origin feat/x', 'feat/x'],
+    ['git push -u origin fix/typo', 'fix/typo'],
+    ['git push', 'feat/x'],
+    ['git push origin HEAD', 'fix/typo'],
+    ['git push origin HEAD:feat/x', 'feat/x'],
+    ['gh pr create --base develop --fill', 'feat/x'],
+    ['gh pr create -B develop --fill', 'fix/typo'],
+    ['gh pr create --base=develop --head feat/x --fill', 'feat/x'],
+    ['gh pr create --fill', 'feat/x'], // no --base: still a work branch's PR
+    ['bash -c "gh pr create --base develop --fill"', 'feat/x'],
+  ];
+
+  it.each(publishing)('blocks `%s` on %s without an approval', (command, branch) => {
+    expect(check(command, branch, 'none')).toMatch(/local review loop/);
+  });
+
+  it.each(publishing)('blocks `%s` on %s with a stale approval', (command, branch) => {
+    expect(check(command, branch, 'stale')).toMatch(/review/);
+    expect(check(command, branch, 'unrelated')).toMatch(/review/);
+  });
+
+  it.each(publishing)('allows `%s` on %s when the approval is for HEAD', (command, branch) => {
+    expect(check(command, branch, 'approved')).toBeNull();
+  });
+
+  it.each(publishing)(
+    'allows `%s` on %s for a fix on top of the approval when the branch is on origin',
+    (command, branch) => {
+      expect(check(command, branch, 'redCiFix')).toBeNull();
+    },
+  );
+
+  it('names both commits when the approval is stale', () => {
+    const message = check('git push -u origin feat/x', 'feat/x', 'stale');
+    expect(message).toContain(older.slice(0, 12));
+    expect(message).toContain(head.slice(0, 12));
+    expect(message).toMatch(/local review loop/);
+  });
+
+  it.each([
+    // HEAD moves before the push, so the approval read before the command does not apply
+    ['git commit -m x && git push -u origin feat/x', 'feat/x'],
+    ['git switch -c feat/y && git push -u origin feat/y', 'feat/x'],
+    ['git switch feat/y && gh pr create --base develop --fill', 'feat/x'],
+    // a branch other than the one checked out
+    ['git push -u origin feat/y', 'feat/x'],
+    ['git push -u origin feat/x', 'develop'],
+    ['gh pr create --base develop --head feat/y --fill', 'feat/x'],
+    ['gh pr create --base develop --head JanPodzimek:feat/y --fill', 'feat/x'],
+    ['cd /tmp && gh pr create --base develop --fill', 'feat/x'],
+  ])('blocks `%s` on %s even with an approval for HEAD', (command, branch) => {
+    expect(check(command, branch, 'approved')).toMatch(/review/);
+  });
+
+  it.each([
+    // /deploy: rc branches, release PRs and tags never need the local review
+    [
+      'git fetch origin && git switch -c rc/v1.2.3 origin/main && git push -u origin rc/v1.2.3',
+      'develop',
+    ],
+    ['git push -u origin rc/v1.2.3', 'rc/v1.2.3'],
+    ['git fetch origin && git tag v1.2.3 origin/main && git push origin v1.2.3', 'develop'],
+    ['git push origin v1.2.3', 'main'],
+    [
+      'gh pr create --base rc/v1.2.3 --head develop --title "Release v1.2.3" --body-file x',
+      'develop',
+    ],
+    ['gh pr create --base main --head rc/v1.2.3 --title "Release v1.2.3" --body-file x', 'develop'],
+    // reading or deleting does not publish unreviewed work
+    ['git push origin --delete feat/x', 'develop'],
+    ['gh pr view --json state,mergeStateStatus,mergeCommit', 'feat/x'],
+    ['gh pr comment --body-file x', 'feat/x'],
+    ['git status', 'feat/x'],
+  ])('does not gate `%s` on %s', (command, branch) => {
+    expect(check(command, branch, 'none')).toBeNull();
+  });
+
+  it('keeps the branch rules in force (a force push stays blocked when approved)', () => {
+    expect(check('git push -f origin feat/x', 'feat/x', 'approved')).toMatch(/force/);
+  });
+});

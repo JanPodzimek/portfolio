@@ -7,6 +7,9 @@
 //   - git run from PowerShell or other tools (the hook matcher is Bash only)
 //   - scripts the command runs (`bash script.sh`, `npm run x`): only the command line is read
 //
+// The local review gate (no push of a work branch and no work PR before the local review loop
+// approved HEAD) is a guard rail too: the approval marker is a plain file any process can write.
+//
 //   feat/<slug> ─┐ squash
 //   fix/<slug>  ─┴──▶ develop ──merge commit──▶ rc/vX.Y.Z ──merge commit──▶ main ──▶ production
 //                                                 ▲ always created from the current main
@@ -31,6 +34,21 @@ const NAME_HINT =
 const UNKNOWN_BRANCH =
   'cannot tell which branch this runs on (git branch unreadable, or an earlier part of the ' +
   'command changes branches in a way the guard cannot follow). Check out the branch first.';
+
+const REVIEW_HOW =
+  'Run the local review loop of the work skill (/new-feature, /fix-bug, /new-tool or ' +
+  '/add-content) until a fresh reviewer has no blocker, major or minor findings; it writes the ' +
+  'current HEAD sha to .git/claude-review/approved (in the git dir, see git rev-parse ' +
+  '--absolute-git-dir). Then push and open the PR.';
+
+/**
+ * Facts the hook reads about the branch checked out when the command starts; the policy stays
+ * pure. `approved` is the sha in the approval marker ('' when missing or invalid),
+ * `approvedIsAncestor` whether it is an ancestor of `head`, `onOrigin` whether the branch
+ * already exists on origin (a PR may be open: a red-CI fix on top of the reviewed commit).
+ * @typedef {{ head: string, approved: string, approvedIsAncestor: boolean, onOrigin: boolean }}
+ *   ReviewFacts
+ */
 
 /** Commands that rewrite or add history on the current branch. */
 const HISTORY_COMMANDS = [
@@ -426,6 +444,9 @@ const isInside = (dir, root) =>
  * @property {string | null} branch branch of the project repository, null when unknown
  * @property {string | null | undefined} dir current directory (see resolveDir)
  * @property {string | null} region directories whose git branch is `branch`
+ * @property {ReviewFacts | undefined} review approval facts for `reviewBranch`; undefined = no gate
+ * @property {string | null} reviewBranch branch checked out when the command starts
+ * @property {boolean} headMoved an earlier part of the command may have moved HEAD
  */
 
 /**
@@ -443,11 +464,44 @@ const positionals = (args) => args.filter((a) => !a.startsWith('-'));
 const stripHeads = (ref) => ref.replace(/^refs\/heads\//, '');
 
 /**
- * @param {string[]} args arguments after `git push`
- * @param {string | null} branch current branch, null when unknown
+ * The local review gate: publishing `branch` (push of a work branch, PR from it) needs an
+ * approval for the commit that is published.
+ * @param {State} state
+ * @param {string | null} branch the branch that would be published, null when unknown
  * @returns {string | null}
  */
-function checkPush(args, branch) {
+function checkReview(state, branch) {
+  const review = state.review;
+  if (!review) return null;
+  const what = branch ? `${branch}` : 'this branch';
+  if (branch === null || branch !== state.reviewBranch || state.headMoved) {
+    return (
+      `cannot check the local review for ${what}: only the branch checked out when the command ` +
+      'starts can be published, with no commit or branch switch earlier in the same command. ' +
+      'Publish it in a separate command. ' +
+      REVIEW_HOW
+    );
+  }
+  const { head, approved } = review;
+  if (COMMIT_SHA.test(head) && approved === head) return null;
+  if (COMMIT_SHA.test(approved) && review.approvedIsAncestor && review.onOrigin) return null;
+  if (!COMMIT_SHA.test(approved)) {
+    return `${what} has no local review approval. ${REVIEW_HOW}`;
+  }
+  return (
+    `the local review approval is for ${approved.slice(0, 12)}, but HEAD is ` +
+    `${head.slice(0, 12)} (new commits since the review, and no open PR branch on origin to ` +
+    `fix). ${REVIEW_HOW}`
+  );
+}
+
+/**
+ * @param {string[]} args arguments after `git push`
+ * @param {string | null} branch current branch, null when unknown
+ * @param {(branch: string | null) => string | null} review the local review gate
+ * @returns {string | null}
+ */
+function checkPush(args, branch, review) {
   /** @type {string[]} */
   const positional = [];
   let onlyTags = false;
@@ -503,6 +557,14 @@ function checkPush(args, branch) {
     }
     if (!isWorkBranch(dst)) {
       return `pushing "${dst}" is not allowed. ${NAME_HINT} ${FLOW}`;
+    }
+  }
+  if (!deleting) {
+    for (const { src, dst } of targets) {
+      if (!FEATURE_BRANCH.test(dst)) continue;
+      // The facts are about the checked-out branch, so it must be pushed under its own name.
+      const error = review(src === dst ? src : null);
+      if (error) return error;
     }
   }
   return null;
@@ -625,9 +687,10 @@ function isAllowedOnProtected(sub, args, branch) {
 /**
  * @param {GitCall} git
  * @param {string | null} branch effective branch for this command
+ * @param {(branch: string | null) => string | null} review the local review gate
  * @returns {string | null}
  */
-function checkGitCall({ sub, args }, branch) {
+function checkGitCall({ sub, args }, branch, review) {
   if (HISTORY_COMMANDS.includes(sub) && !args.some((a) => SEQUENCER_FLAGS.includes(a))) {
     if (branch === null) return `refusing to ${sub}: ${UNKNOWN_BRANCH}`;
     if (isProtected(branch) && !isAllowedOnProtected(sub, args, branch)) {
@@ -643,7 +706,7 @@ function checkGitCall({ sub, args }, branch) {
     }
   }
   if (sub === 'push') {
-    const error = checkPush(args, branch);
+    const error = checkPush(args, branch, review);
     if (error) return error;
   }
   if (sub === 'tag' && args.some((a) => /^(--delete|--force|-[a-zA-Z]*[df][a-zA-Z]*)$/.test(a))) {
@@ -656,6 +719,24 @@ function checkGitCall({ sub, args }, branch) {
     }
   }
   return null;
+}
+
+const GH_WORD = /(^|[/\\])gh(\.exe)?$/;
+
+/**
+ * `gh pr create`: a PR from a work branch (or into develop, which only takes work branches)
+ * needs the local review approval. Release PRs (`--head develop`, `--head rc/vX.Y.Z`) do not.
+ * @param {string[]} args arguments after `gh pr create`
+ * @param {State} state
+ * @returns {string | null}
+ */
+function checkPrCreate(args, state) {
+  const base = optionValue(args, ['--base'], ['-B']);
+  const explicitHead = optionValue(args, ['--head'], ['-H']);
+  const checkedOut = inRegion(state, state.dir) ? state.branch : null;
+  const head = explicitHead === null ? checkedOut : explicitHead.replace(/^[^:]*:/, '');
+  if (base !== 'develop' && head !== null && !FEATURE_BRANCH.test(head)) return null;
+  return checkReview(state, head !== null && head === checkedOut ? head : null);
 }
 
 const RUN_PLAIN =
@@ -708,6 +789,14 @@ function checkCommands(command, state) {
       continue;
     }
 
+    if (bare[start] && GH_WORD.test(head) && words[start + 1] === 'pr') {
+      if (words[start + 2] === 'create') {
+        const error = checkPrCreate(words.slice(start + 3), state);
+        if (error) return error;
+      }
+      continue;
+    }
+
     if (!isGit) continue;
     const git = parseGit(words, start);
     if (!git) continue;
@@ -717,10 +806,11 @@ function checkCommands(command, state) {
     const ownRepo = !git.otherRepo && inRegion(state, dir);
     const branch = ownRepo ? state.branch : null;
 
-    const error = checkGitCall(git, branch);
+    const error = checkGitCall(git, branch, (b) => checkReview(state, b));
     if (error) return error;
 
     const after = branchAfter(git.sub, git.args);
+    if (after !== undefined || HISTORY_COMMANDS.includes(git.sub)) state.headMoved = true;
     if (after !== undefined) {
       if (ownRepo) state.branch = chained ? after : null;
       else state.branch = null; // may have been this repository after all
@@ -740,8 +830,12 @@ function checkCommands(command, state) {
  * @param {string} command the full shell command line
  * @param {string} currentBranch branch checked out in `cwd` when the command starts
  *   ('' if unknown, 'HEAD' if detached)
- * @param {{ projectDir?: string, cwd?: string }} [context] where the command starts
- *   (`cwd`, defaults to `projectDir`) and the project whose branch is `currentBranch`
+ * A push of a feat/fix branch and `gh pr create` for one also need `context.review` to show
+ * that the local review loop approved HEAD (see ReviewFacts). Without `context.review` that gate
+ * is off; the guard-git hook always passes it.
+ * @param {{ projectDir?: string, cwd?: string, review?: ReviewFacts }} [context] where the
+ *   command starts (`cwd`, defaults to `projectDir`), the project whose branch is
+ *   `currentBranch`, and the review approval facts for `currentBranch`
  * @returns {string | null} an explanation when the command is blocked
  */
 export function checkGitCommand(command, currentBranch, context = {}) {
@@ -753,6 +847,9 @@ export function checkGitCommand(command, currentBranch, context = {}) {
     branch: currentBranch || null,
     dir: home,
     region: home === undefined ? null : project && isInside(home, project) ? project : home,
+    review: context.review,
+    reviewBranch: currentBranch || null,
+    headMoved: false,
   };
   return checkCommands(command, state);
 }
