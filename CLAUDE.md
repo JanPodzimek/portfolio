@@ -63,16 +63,17 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
    integration branch: every work PR targets it. A release (`/deploy`, only when Jan asks) is
    `rc/vX.Y.Z` created from the current `main`; `develop` → rc and rc → `main` are merge
    commits, then `main` is tagged `vX.Y.Z` (any feat → minor, fixes only → patch). **Review
-   happens locally, before the PR:** a loop with a fresh `reviewer` agent per round (at most 5)
-   until a round has no blocker, major or minor findings. Only then is the branch pushed;
+   happens locally, before the PR:** a loop with one `reviewer` agent per change (at most 5
+   rounds, plus a fresh final gate for risky changes) until a round has no blocker, major or
+   minor findings. Only then is the branch pushed;
    **merges are automated:** a PR into `develop` squash-merges by GitHub auto-merge once CI is
    green, with no further review and no human merge step. Red CI or a loop that does not end
    clean stops the flow. The `guard-git` hook (no push or PR of a work branch before the loop
    approved HEAD), the CI `branch-policy` check and GitHub rulesets enforce this; no force
    pushes.
-6. **Definition of done:** `npm run verify` passes and the last round of the local review loop
+6. **Definition of done:** `npm run verify` passes, the last round of the local review loop
    has no blocker, major or minor findings and no unresolved dispute on a blocker, major or
-   minor item (nits go in the PR body).
+   minor item (nits go in the PR body), and the final gate passed when the change is risky.
 7. **Facts about Jan come from his CV or from Jan.** Never invent numbers, employers, tools or
    results. Internal Alza details (system names, screenshots, data) never go on the site.
 
@@ -83,8 +84,10 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
   to end): `/deploy`.
 - Implementation is done by the `implementer` agent; review by the separate, read-only
   `reviewer` agent. The author of a change never reviews it. The work skills run the local
-  review loop themselves: a new reviewer each round, findings back to the same implementer
-  (fix with a commit or dispute with a reason), then push, PR and auto-merge.
+  review loop themselves: one reviewer per change, resumed each round with the delta,
+  findings back to the same implementer (fix with a commit or dispute with a reason), a fresh
+  final gate when the loop was long, a dispute was accepted or hooks, workflows, settings or
+  scripts changed; then push, PR and auto-merge.
 
 ## Conventions
 

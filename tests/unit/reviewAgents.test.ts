@@ -122,3 +122,26 @@ describe('implementer agent', () => {
     expect(implementer).toMatch(/Do not write the review approval marker/);
   });
 });
+
+describe('docs: one reviewer per change', () => {
+  const claude = flat(text('CLAUDE.md'));
+  const workflow = flat(text('docs/agentic-workflow.md'));
+
+  it('no longer describe a fresh reviewer every round', () => {
+    for (const doc of [claude, workflow])
+      expect(doc).not.toMatch(
+        /fresh `?reviewer`? agent per round|new reviewer each round|starts a \*\*new\*\* reviewer instead of resuming/,
+      );
+  });
+
+  it('describe the persistent reviewer and the risk-triggered final gate', () => {
+    for (const doc of [claude, workflow]) {
+      expect(doc).toMatch(/one `?reviewer`? (agent )?per change/);
+      expect(doc).toMatch(/final gate/);
+    }
+    // why: independence from the implementer, and the PR #11 evidence
+    expect(workflow).toMatch(/independence that matters is from the implementer/i);
+    expect(workflow).toMatch(/PR #11/);
+    expect(workflow).toMatch(/anti-anchoring/);
+  });
+});
