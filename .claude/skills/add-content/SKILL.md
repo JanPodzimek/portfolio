@@ -25,15 +25,55 @@ Rules:
    (new section, new case study count).
 4. `npm run verify:fast` (i18n parity and case-study parity tests catch missing translations),
    then a build and a quick look at both `/` and `/cs/`.
-5. `/review`. Put the final EN and CZ text in the PR body and in the reply, so Jan can correct
-   the wording later with a `fix/` PR.
-6. **Ship it, fully automated** (nobody to wait for; the only direct merge is the `CLEAN`
-   case below). Only with a `/review` verdict without blocker/major findings:
+   Delegate the writing and the checks (steps 2–4) to the `implementer` agent.
+5. **Local review loop.** Nothing leaves the machine before it ends.
+
+   - **A new reviewer every round.** Start each round as a new agent with the Agent tool,
+     `subagent_type: reviewer`. Never resume or message an earlier reviewer: each round reads
+     the change cold.
+   - **A fixed prompt.** Fill in this template and send nothing else. Never pass the
+     implementer's summary, rationale or hand-off text.
+
+     ```md
+     Review branch <branch> against develop. Round <n> of at most 5.
+     Review the full diff fresh, then judge every previous finding: closed, still open or
+     dispute accepted. Return the report in your exact format, including the Loop line.
+
+     Previous round's findings and the implementer's responses (round 1: none):
+
+     | #   | Severity | File:line | Finding | Response                            |
+     | --- | -------- | --------- | ------- | ----------------------------------- |
+     | 1   | <sev>    | <where>   | <what>  | fixed in <sha> / disputed: <reason> |
+     ```
+
+   - **Exit** when a round's report says `**Loop:** done`: no blocker, major or minor finding
+     and no unresolved dispute on a blocking item (every blocker, major or minor previous item
+     closed or its dispute accepted). Nits never block, open or disputed: fix them if cheap (a
+     fix after the last round needs one more round, because the approval is for the reviewed
+     commit), otherwise list them in the PR body.
+   - **Otherwise** send the findings table, nits included, to the **same** `implementer` that
+     made the change (SendMessage to it, never a new one). It answers every finding with
+     `fixed in <sha>` (a commit) or `disputed: <reason>`. The findings plus those responses are
+     the next round's prompt.
+   - **Cap: 5 rounds.** If round 5 still has blocking findings or an unresolved dispute on a
+     blocking item, stop: do not push, and ask Jan, with the last report and the open items.
+   - **Approve.** Save the final report to the scratchpad (e.g. `review-final.md`; it becomes the
+     PR comment). Check that `git status --short` is empty and that `git rev-parse HEAD` equals
+     the report's `**Head:**`. Then, with the Write tool (not a shell command), write that sha on
+     one line to `<git-dir>/claude-review/approved`, where `<git-dir>` is the output of
+     `git rev-parse --absolute-git-dir`. The guard-git hook refuses to push a feat/fix branch or
+     open its PR until that file holds the current HEAD.
+
+6. Put the final EN and CZ text in the PR body and in the reply, so Jan can correct the wording
+   later with a `fix/` PR.
+7. **Ship it, fully automated** (nobody to wait for; the only direct merge is the `CLEAN`
+   case below). Only after the local review loop ended with `**Loop:** done` and wrote the
+   approval:
 
    ```sh
    git push -u origin feat/<slug>       # or fix/<slug>
    gh pr create --base develop --fill   # squash commit = PR title + body: make both clear
-   gh pr comment --body-file <review>   # the /review report, saved to a scratch file
+   gh pr comment --body-file <review>   # the final report of the local review loop
    gh pr merge --squash --auto --delete-branch
    gh pr checks --watch --required -i 15
    gh pr view --json state,mergeStateStatus,mergeCommit
@@ -43,7 +83,11 @@ Rules:
    Wait only with the blocking `gh pr checks --watch`, never with `sleep` (auto mode refuses
    sleep loops). Right after `gh pr create` it may say "no checks reported": run it again (up to
    5 times) before treating that as a failure. A red check is an automatic stop: fix it on the
-   same branch (the PR updates), then watch again. Then act on `gh pr view`:
+   same branch (the PR updates), then watch again. That fix needs no new review round (the
+   hook allows the push: the approved commit is its ancestor and the branch is on origin),
+   unless it changes behaviour under `src/`. Then run one round of the loop on it first and
+   write the new approval; if that round is not `**Loop:** done`, stop and ask Jan. Then act on
+   `gh pr view`:
    - `MERGED`: done.
    - `CLEAN` in `mergeStateStatus` but not `MERGED`: the checks are green and GitHub has not run
      the queued auto-merge yet (it can take a minute or more, and watching the finished checks
