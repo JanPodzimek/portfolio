@@ -64,8 +64,8 @@ On Windows Git Bash, prefix commands that pass URL paths with `MSYS_NO_PATHCONV=
    `rc/vX.Y.Z` created from the current `main`; `develop` → rc and rc → `main` are merge
    commits, then `main` is tagged `vX.Y.Z` (any feat → minor, fixes only → patch). **Review
    happens locally, before the PR:** a loop with one `reviewer` agent per change (at most 5
-   rounds, plus a fresh final gate for risky changes) until a round has no blocker, major or
-   minor findings. Only then is the branch pushed;
+   rounds, the final gate included; that gate is a fresh reviewer for risky changes) until a
+   round has no blocker, major or minor findings. Only then is the branch pushed;
    **merges are automated:** a PR into `develop` squash-merges by GitHub auto-merge once CI is
    green, with no further review and no human merge step. Red CI or a loop that does not end
    clean stops the flow. The `guard-git` hook (no push or PR of a work branch before the loop

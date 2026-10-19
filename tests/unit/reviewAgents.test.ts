@@ -70,9 +70,7 @@ describe('reviewer agent: resumed round', () => {
     expect(resumed).toMatch(
       /never drop or downgrade a blocker or major finding\s+because of\s+pushback/i,
     );
-    expect(resumed).toMatch(/second dispute on the same item/i);
-    expect(resumed).toMatch(/upheld/);
-    expect(resumed).toMatch(/Jan/);
+    expect(resumed).toMatch(/second dispute on the same item means the finding is upheld[^.]*Jan/i);
   });
 
   it('raises new findings on code it already passed only at blocker or major', () => {
@@ -132,6 +130,12 @@ describe('docs: one reviewer per change', () => {
       expect(doc).not.toMatch(
         /fresh `?reviewer`? agent per round|new reviewer each round|starts a \*\*new\*\* reviewer instead of resuming/,
       );
+  });
+
+  // The cap includes the gate: "5 rounds plus a gate" would contradict the skills.
+  it('count the final gate inside the 5-round cap', () => {
+    expect(claude).toMatch(/at most 5 rounds, the final gate included/);
+    expect(claude).not.toMatch(/plus a fresh final gate/);
   });
 
   it('describe the persistent reviewer and the risk-triggered final gate', () => {

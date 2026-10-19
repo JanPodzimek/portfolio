@@ -64,6 +64,8 @@ argument-hint: <what to build>
      made the change (SendMessage to it, never a new one). It answers every finding with
      `fixed in <sha>` (a commit) or `disputed: <reason>`. The findings plus those responses are
      the next round's prompt.
+   - **Upheld dispute.** If a report marks a finding upheld after a second dispute on it,
+     stop: do not push, and ask Jan, with that report.
    - **Final gate, only when risky.** After the persistent reviewer reports `**Loop:** done`,
      start a **new** `reviewer` for one pass with the full-diff template (previous findings:
      none) if any of these hold: the loop took 3 or more rounds; the reviewer accepted a
@@ -74,7 +76,8 @@ argument-hint: <what to build>
      No trigger: the persistent reviewer's approval is final.
    - **Cap: 5 rounds.** The cap counts every round, including the final gate. If round 5 still
      has blocking findings or an unresolved dispute on a blocking item, stop: do not push, and
-     ask Jan, with the last report and the open items.
+     ask Jan, with the last report and the open items. Likewise, if the gate would be round
+     6, or its fixes need a round past 5, stop and ask Jan.
    - **Approve.** Only after the final gate passed or was skipped. Save the final report (the
      last one that says `**Loop:** done`, plus the gate's report if it ran) to the scratchpad
      (e.g. `review-final.md`; it becomes the PR comment). Check that `git status --short` is

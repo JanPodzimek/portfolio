@@ -175,7 +175,18 @@ describe('work skills: local review loop', () => {
     expect(block).toMatch(/Its nits go in the PR body/);
     expect(block).toMatch(/No trigger: the persistent reviewer's approval is final/);
     expect(block).toMatch(/counts every round, including the final gate/);
+    // a gate that would be round 6, or gate fixes past round 5, stop the loop
+    expect(block).toMatch(/if the gate would be round 6, or its fixes need a round past 5, stop/);
   });
+
+  it.each(workSkills)(
+    '%s: stops and asks Jan when a finding is upheld after a second dispute',
+    (file) => {
+      expect(flatLoop(file)).toMatch(
+        /upheld after a second dispute[^.]*stop: do not push, and ask Jan/,
+      );
+    },
+  );
 
   it.each(workSkills)('%s: writes the marker only after the final gate', (file) => {
     const block = loop(file);
