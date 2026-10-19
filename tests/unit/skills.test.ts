@@ -155,6 +155,10 @@ describe('work skills: local review loop', () => {
     expect(loop(file)).toMatch(/no blocker, major or minor finding/);
     expect(loop(file)).toMatch(/unresolved dispute/);
     expect(loop(file)).toMatch(/Nits never\s+block/);
+    // an open nit (or a dispute about one) never blocks the exit or reaches the cap
+    expect(loop(file)).toMatch(/every blocker, major or minor\s+previous item\s+closed/);
+    expect(loop(file)).not.toMatch(/every previous\s+item\s+closed/);
+    expect(loop(file)).toMatch(/unresolved dispute on a blocking\s+item/);
   });
 
   it.each(workSkills)('%s: writes the approval marker with the Write tool', (file) => {

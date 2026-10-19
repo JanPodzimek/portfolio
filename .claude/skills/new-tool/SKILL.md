@@ -52,15 +52,16 @@ Steps:
      ```
 
    - **Exit** when a round's report says `**Loop:** done`: no blocker, major or minor finding
-     and no unresolved dispute (every previous item closed or its dispute accepted). Nits never
-     block: fix them if cheap (a fix after the last round needs one more round, because the
-     approval is for the reviewed commit), otherwise list them in the PR body.
+     and no unresolved dispute on a blocking item (every blocker, major or minor previous item
+     closed or its dispute accepted). Nits never block, open or disputed: fix them if cheap (a
+     fix after the last round needs one more round, because the approval is for the reviewed
+     commit), otherwise list them in the PR body.
    - **Otherwise** send the findings table, nits included, to the **same** `implementer` that
      made the change (SendMessage to it, never a new one). It answers every finding with
      `fixed in <sha>` (a commit) or `disputed: <reason>`. The findings plus those responses are
      the next round's prompt.
-   - **Cap: 5 rounds.** If round 5 still has blocking findings or an unresolved dispute, stop:
-     do not push, and ask Jan, with the last report and the open items.
+   - **Cap: 5 rounds.** If round 5 still has blocking findings or an unresolved dispute on a
+     blocking item, stop: do not push, and ask Jan, with the last report and the open items.
    - **Approve.** Save the final report to the scratchpad (e.g. `review-final.md`; it becomes the
      PR comment). Check that `git status --short` is empty and that `git rev-parse HEAD` equals
      the report's `**Head:**`. Then, with the Write tool (not a shell command), write that sha on

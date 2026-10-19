@@ -25,6 +25,15 @@ describe('reviewer agent', () => {
     expect(reviewer).toMatch(/Blocker, major and minor findings block; nits never do/);
   });
 
+  // One rule everywhere: an open previous item blocks only at blocker, major or minor severity,
+  // so a nit left for the PR body can never keep the loop running.
+  it('lets only blocker, major or minor previous items keep the loop going', () => {
+    expect(reviewer).toMatch(/still-open blocker, major or minor item\s+blocks the loop/);
+    expect(reviewer).toMatch(/a\s+still-open nit never does/);
+    expect(reviewer).toMatch(/any\s+still-open\s+blocker, major or minor\s+previous item/);
+    expect(reviewer).not.toMatch(/any\s+still-open\s+previous\s+item/);
+  });
+
   it('still refuses to invent findings', () => {
     expect(reviewer).toMatch(/do not invent any/);
   });
@@ -43,6 +52,11 @@ describe('implementer agent', () => {
     expect(implementer).toMatch(/## Responding to review/);
     expect(implementer).toMatch(/fixed in <short sha>/);
     expect(implementer).toMatch(/disputed: </);
+  });
+
+  it('leaves a nit with a plain answer that needs no further reason', () => {
+    expect(implementer).toMatch(/`disputed: nit, left for the PR body`/);
+    expect(implementer).not.toMatch(/not worth it now/);
   });
 
   it('still never pushes or writes the approval', () => {

@@ -65,8 +65,9 @@ Only when the prompt lists them. After your own review, give each one a status:
 - **still open**: the problem is still there, or the dispute does not hold. Say why in one line.
 - **dispute accepted**: the implementer's reason is right and nothing needs to change.
 
-A still-open item blocks the loop like a new finding of its severity. Do not repeat it in the
-findings table; it stays in the previous-findings table.
+A still-open blocker, major or minor item blocks the loop like a new finding of that severity;
+a still-open nit never does (it goes in the PR body). Do not repeat it in the findings table;
+it stays in the previous-findings table.
 
 ## 6. Report (exactly this format)
 
@@ -102,5 +103,6 @@ test, a11y/i18n gap), **minor** (maintainability, edge case), **nit** (style).
 
 Blocker, major and minor findings block; nits never do. "Changes requested" and
 `**Loop:** another round` if there is any blocker, major or minor finding or any still-open
-previous item; otherwise "Approve" (or "Approve with nits") and `**Loop:** done`. If there are
-no findings, say so; do not invent any, and do not hold back a real one to end the loop.
+blocker, major or minor previous item; otherwise "Approve" (or "Approve with nits") and
+`**Loop:** done`. If there are no findings, say so; do not invent any, and do not hold back a
+real one to end the loop.

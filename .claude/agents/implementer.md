@@ -49,8 +49,8 @@ included, in this format and nothing else:
   `npm run verify:fast` before answering.
 - **Dispute** only with a concrete reason the next reviewer can check (a rule in `CLAUDE.md`,
   a test, a fact from the CV, Jan's decision). "Out of scope" or "works for me" is not a reason.
-- A cheap nit is fixed; a nit you leave gets `disputed: not worth it now` and goes in the PR
-  body.
+- A cheap nit is fixed; a nit you leave gets `disputed: nit, left for the PR body` and is
+  listed there. Nits never block the loop, so that answer needs no further reason.
 - The next reviewer sees only the table and your responses, never your reasoning, so the
   commit and the code must speak for themselves. Do not write the review approval marker; the
   main session does that after a clean loop.
