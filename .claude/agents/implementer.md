@@ -28,9 +28,9 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
 6. **Commit** with an imperative message describing the change.
 7. **Hand off.** Summarise what changed, which tests cover it, and anything Jan should check
    (especially wording in Czech and any claim about his work). The main session then runs the
-   local review loop: a fresh reviewer per round, with the findings sent back to you. After a
-   clean loop it ships: PR into `develop`, squash auto-merge once CI is green
-   (`gh pr merge --squash --auto`). That is not your step.
+   local review loop: one reviewer that follows the change across rounds, with the findings
+   sent back to you. After a clean loop it ships: PR into `develop`, squash auto-merge once CI
+   is green (`gh pr merge --squash --auto`). That is not your step.
 
 ## Responding to review
 
@@ -47,11 +47,11 @@ included, in this format and nothing else:
 - **Fix** with one commit per finding (or one per tightly linked group), imperative message,
   test first if it is a bug. Give the sha of the commit that fixes it. Run
   `npm run verify:fast` before answering.
-- **Dispute** only with a concrete reason the next reviewer can check (a rule in `CLAUDE.md`,
+- **Dispute** only with a concrete reason the reviewer can check (a rule in `CLAUDE.md`,
   a test, a fact from the CV, Jan's decision). "Out of scope" or "works for me" is not a reason.
 - A cheap nit is fixed; a nit you leave gets `disputed: nit, left for the PR body` and is
   listed there. Nits never block the loop, so that answer needs no further reason.
-- The next reviewer sees only the table and your responses, never your reasoning, so the
+- The reviewer sees only the table and your responses, never your reasoning, so the
   commit and the code must speak for themselves. Do not write the review approval marker; the
   main session does that after a clean loop.
 

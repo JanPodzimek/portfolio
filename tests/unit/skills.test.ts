@@ -131,11 +131,71 @@ describe('work skills: local review loop', () => {
     for (const block of rest) expect(block).toBe(first);
   });
 
-  it.each(workSkills)('%s: starts a new reviewer agent every round', (file) => {
-    expect(loop(file)).toMatch(/new reviewer every round/i);
-    expect(loop(file)).toMatch(/`subagent_type: reviewer`/);
-    expect(loop(file)).toMatch(/never resume/i);
-    expect(loop(file)).toMatch(/never pass the\s+implementer's summary/i);
+  /** The loop block with each whitespace run as one space, so wrapped phrases still match. */
+  const flatLoop = (file: string) => loop(file).replace(/\s+/g, ' ');
+
+  it.each(workSkills)('%s: starts one new reviewer in round 1 and keeps its id', (file) => {
+    expect(flatLoop(file)).toMatch(/Round 1: a new reviewer\./);
+    expect(flatLoop(file)).toMatch(/`subagent_type: reviewer`/);
+    expect(flatLoop(file)).toMatch(/keep its agent id/);
+    expect(flatLoop(file)).not.toMatch(/new reviewer every round|never resume/i);
+  });
+
+  it.each(workSkills)('%s: resumes the same reviewer with a delta template', (file) => {
+    expect(flatLoop(file)).toMatch(/Rounds 2 and later: the same reviewer\./);
+    expect(flatLoop(file)).toMatch(/SendMessage to that agent id/);
+    expect(loop(file)).toMatch(/Previous Head: <sha>/);
+    expect(loop(file)).toMatch(/New HEAD: <sha>/);
+    expect(flatLoop(file)).toMatch(/never pass the implementer's summary/i);
+  });
+
+  it.each(workSkills)('%s: falls back to a new full-diff reviewer if resuming fails', (file) => {
+    expect(flatLoop(file)).toMatch(/\*\*Fallback\.\*\*/);
+    expect(flatLoop(file)).toMatch(/start a new reviewer with the full-diff template/);
+    expect(flatLoop(file)).toMatch(/previous findings/i);
+  });
+
+  it.each(workSkills)('%s: runs a fresh final gate only when the change is risky', (file) => {
+    const block = flatLoop(file);
+    expect(block).toMatch(/\*\*Final gate, only when risky\.\*\*/);
+    expect(block).toMatch(/a \*\*new\*\* `reviewer`/);
+    // the three triggers
+    expect(block).toMatch(/took 3 or more rounds/);
+    expect(block).toMatch(/accepted a dispute/);
+    expect(block).toContain('`git diff --name-only develop...HEAD`');
+    for (const path of [
+      '.claude/hooks/',
+      '.github/workflows/',
+      '.claude/settings.json',
+      'scripts/',
+      // the files that define the review process itself
+      '.claude/agents/',
+      '.claude/skills/',
+      'CLAUDE.md',
+    ])
+      expect(block).toContain(`\`${path}\``);
+    // what happens to its findings
+    expect(block).toMatch(/no second gate/);
+    expect(block).toMatch(/Its nits go in the PR body/);
+    expect(block).toMatch(/No trigger: the persistent reviewer's approval is final/);
+    expect(block).toMatch(/counts every round, including the final gate/);
+    // a gate that would be round 6, or gate fixes past round 5, stop the loop
+    expect(block).toMatch(/if the gate would be round 6, or its fixes need a round past 5, stop/);
+  });
+
+  it.each(workSkills)(
+    '%s: stops and asks Jan when a finding is upheld after a second dispute',
+    (file) => {
+      expect(flatLoop(file)).toMatch(
+        /upheld after a second dispute[^.]*stop: do not push, and ask Jan/,
+      );
+    },
+  );
+
+  it.each(workSkills)('%s: writes the marker only after the final gate', (file) => {
+    const block = loop(file);
+    expect(block.indexOf('**Approve.**')).toBeGreaterThan(block.indexOf('**Final gate'));
+    expect(flatLoop(file)).toMatch(/only after the final gate passed or was skipped/i);
   });
 
   it.each(workSkills)('%s: sends findings back to the same implementer', (file) => {

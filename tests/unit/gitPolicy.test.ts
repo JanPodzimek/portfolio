@@ -411,6 +411,15 @@ describe('checkGitCommand: local review gate', () => {
     expect(message).toMatch(/local review loop/);
   });
 
+  it('describes the current review model in its advice', () => {
+    for (const review of ['none', 'stale'] as const) {
+      const message = check('git push -u origin feat/x', 'feat/x', review) ?? '';
+      expect(message).toContain('**Loop:** done');
+      expect(message).toMatch(/final gate/);
+      expect(message).not.toMatch(/fresh reviewer/);
+    }
+  });
+
   it.each([
     // HEAD moves before the push, so the approval read before the command does not apply
     ['git commit -m x && git push -u origin feat/x', 'feat/x'],

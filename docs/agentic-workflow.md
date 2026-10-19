@@ -18,14 +18,19 @@ Jan: "/new-feature add a dark/light preview to the hero"
   ├─ main session plans (3–6 bullets), asks if a decision is Jan's
   ├─ implementer agent: feat/<slug> from develop → tests → code → EN+CZ text → verify → commit
   │     └─ hooks: Prettier on every edit · verify:fast before it may stop · branch policy
-  ├─ local review loop, round n = 1…5 (nothing is pushed yet):
-  │     ├─ NEW reviewer agent (read-only, fresh context, fixed prompt: branch, round,
-  │     │   previous findings + responses): full diff vs CLAUDE.md, checks, risks, findings
-  │     │   table with severity, status of each previous finding, Loop: done | another round
-  │     ├─ done (no blocker/major/minor finding, no unresolved dispute on one; nits never
-  │     │   block) → approve HEAD, leave the loop
+  ├─ local review loop, one reviewer per change, round n = 1…5 (nothing is pushed yet):
+  │     ├─ round 1: NEW reviewer agent (read-only, fixed full-diff prompt), id kept: full
+  │     │   diff vs CLAUDE.md, checks, risks, findings table, Loop: done | another round
+  │     ├─ round 2+: SAME reviewer via SendMessage (fixed delta prompt: previous Head, new
+  │     │   HEAD, findings + responses): delta and its interaction with the branch, status of
+  │     │   each previous finding (fallback if it cannot be resumed: new full-diff reviewer)
   │     ├─ otherwise → same implementer: "fixed in <sha>" or "disputed: <reason>" per finding
-  │     └─ still not done after round 5 → stop and ask Jan
+  │     ├─ done (no blocker/major/minor finding, no unresolved dispute on one; nits never
+  │     │   block) → final gate, only when risky (3+ rounds, an accepted dispute, or hooks,
+  │     │   workflows, settings, scripts, agents, skills or CLAUDE.md touched): NEW
+  │     │   reviewer, one full-diff pass; its blocking findings go back into the loop (no
+  │     │   second gate) → approve HEAD
+  │     └─ still not done after round 5 (the gate counts) → stop and ask Jan
   ├─ push → PR into develop → final review posted as a comment → squash auto-merge on green CI
   │     (no review on the PR; a red-CI fix gets no new round unless it changes src/ behaviour)
   └─ /deploy (only when Jan asks), end to end without manual steps:
@@ -128,14 +133,24 @@ The implementer is optimised to finish the task; it is biased towards believing 
 The reviewer runs in a separate context, cannot edit files, and is asked to find problems
 against a fixed checklist. It's the same separation of duties a QA team has with developers.
 
-Every round of the loop starts a **new** reviewer instead of resuming the last one. A resumed
-reviewer remembers its own earlier verdict and the arguments it already accepted, so it tends
-to check only whether its old findings were addressed. A fresh one reviews the whole diff cold
-and gets only a fixed prompt: the branch, the round number, the previous findings and the
-implementer's one-line response to each (`fixed in <sha>` or `disputed: <reason>`). It never
-sees the implementer's summary or rationale, so it judges the code, not the story about it.
-The implementer, in contrast, stays the same agent for the whole loop: it keeps the context
-it needs to fix things.
+The loop keeps **one reviewer per change**. The independence that matters is from the
+implementer, not from the reviewer's own earlier rounds: the reviewer never sees the
+implementer's summary or rationale, only fixed prompts with the findings and a one-line
+response to each (`fixed in <sha>` or `disputed: <reason>`), so it judges the code, not the
+story about it. A persistent reviewer converges better and checks each fix against the intent
+of its own finding. A fresh reviewer every round did not: on PR #11 the fresh round 2 raised
+three new nits on code round 1 had already passed, which forced a round 3.
+
+Staying has a known risk, anchoring: being talked out of a finding, or never looking again at
+code it passed. Two things guard against it. The reviewer's anti-anchoring rules accept a
+dispute only for a stated technical reason, never drop or downgrade a blocker or major finding
+under pushback (a second dispute on the same item goes to Jan), and allow new findings on
+already-passed code only at blocker or major. And a **fresh final gate**, one full-diff pass
+by a new reviewer, runs when anchoring is likely or a miss is expensive: the loop took 3 or
+more rounds, a dispute was accepted, or the diff touches `.claude/hooks/`, `.github/workflows/`,
+`.claude/settings.json`, `scripts/`, or the files that define the review process itself
+(`.claude/agents/`, `.claude/skills/`, `CLAUDE.md`). The implementer stays the same agent for
+the whole loop too: it keeps the context it needs to fix things.
 
 ## Agents
 
