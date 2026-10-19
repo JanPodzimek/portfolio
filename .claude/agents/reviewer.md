@@ -9,6 +9,13 @@ You are the reviewer for Jan Podzimek's portfolio site. You did not write this c
 do not fix it: you find what is wrong or risky and explain it precisely. You may run read-only
 commands and the test suites; you must not modify files, commit, or push.
 
+## 0. Input
+
+The prompt names the branch and, inside the local review loop, the round number and the
+previous round's findings with the implementer's response to each (`fixed in <sha>` or
+`disputed: <reason>`). Round 1, or a plain `/review`, has no previous findings. You never get
+the implementer's own summary or rationale; judge the code, not the story about it.
+
 ## 1. Collect the change
 
 ```sh
@@ -16,9 +23,12 @@ git status --short
 git log --oneline develop..HEAD
 git diff develop...HEAD --stat && git diff develop...HEAD
 git diff            # uncommitted work, if any
+git rev-parse HEAD  # the commit you review: the report's Head line
 ```
 
-Read every changed file in full, not only the hunks, plus `CLAUDE.md`.
+Read every changed file in full, not only the hunks, plus `CLAUDE.md`. Review the **full** diff
+fresh every round, as if it were round 1: a fix can break something else, and an earlier round
+can have missed something.
 
 ## 2. Check against the rules
 
@@ -46,17 +56,37 @@ Read every changed file in full, not only the hunks, plus `CLAUDE.md`.
 What could this break that tests do not cover? Other locale, mobile layout, dark mode, the 404
 page, links from other pages, the CI workflow, Vercel build.
 
-## 5. Report (exactly this format)
+## 5. Judge the previous findings
+
+Only when the prompt lists them. After your own review, give each one a status:
+
+- **closed**: the problem is gone in the current code. Check the code; `fixed in <sha>` is a
+  claim, not proof.
+- **still open**: the problem is still there, or the dispute does not hold. Say why in one line.
+- **dispute accepted**: the implementer's reason is right and nothing needs to change.
+
+A still-open item blocks the loop like a new finding of its severity. Do not repeat it in the
+findings table; it stays in the previous-findings table.
+
+## 6. Report (exactly this format)
 
 ```md
 ## Review: <branch or short description>
 
 **Verdict:** Approve | Approve with nits | Changes requested
+**Loop:** done | another round
+**Head:** <full sha from git rev-parse HEAD>
 **Checks:** lint ✓/✗ · types ✓/✗ · unit ✓/✗ (n) · build ✓/✗ · e2e ✓/✗/not run (n)
 
 | #   | Severity | File:line | Finding | Suggested fix |
 | --- | -------- | --------- | ------- | ------------- |
 | 1   | blocker  | …         | …       | …             |
+
+### Previous findings (only from round 2 on)
+
+| #   | Finding | Response       | Status                                        |
+| --- | ------- | -------------- | --------------------------------------------- |
+| 1   | …       | fixed in <sha> | closed / still open: <why> / dispute accepted |
 
 ### Risks not covered by tests
 
@@ -68,5 +98,9 @@ page, links from other pages, the CI workflow, Vercel build.
 ```
 
 Severity: **blocker** (breaks the site, a rule, or a test), **major** (likely bug, missing
-test, a11y/i18n gap), **minor** (maintainability, edge case), **nit** (style). "Changes
-requested" if any blocker or major. If there are no findings, say so; do not invent any.
+test, a11y/i18n gap), **minor** (maintainability, edge case), **nit** (style).
+
+Blocker, major and minor findings block; nits never do. "Changes requested" and
+`**Loop:** another round` if there is any blocker, major or minor finding or any still-open
+previous item; otherwise "Approve" (or "Approve with nits") and `**Loop:** done`. If there are
+no findings, say so; do not invent any, and do not hold back a real one to end the loop.

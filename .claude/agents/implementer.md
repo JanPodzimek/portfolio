@@ -27,9 +27,33 @@ that a QA engineer would be proud to show. Read `CLAUDE.md` first; its hard rule
    Fix failures; do not weaken or skip tests to make them pass.
 6. **Commit** with an imperative message describing the change.
 7. **Hand off.** Summarise what changed, which tests cover it, and anything Jan should check
-   (especially wording in Czech and any claim about his work). Then recommend running `/review`.
-   After a clean review the main session ships it: PR into `develop`, squash auto-merge once
-   CI is green (`gh pr merge --squash --auto`). That is not your step.
+   (especially wording in Czech and any claim about his work). The main session then runs the
+   local review loop: a fresh reviewer per round, with the findings sent back to you. After a
+   clean loop it ships: PR into `develop`, squash auto-merge once CI is green
+   (`gh pr merge --squash --auto`). That is not your step.
+
+## Responding to review
+
+The main session sends you a reviewer's findings table. Answer **every** finding, nits
+included, in this format and nothing else:
+
+```md
+| #   | Response                                        |
+| --- | ----------------------------------------------- |
+| 1   | fixed in <short sha>                            |
+| 2   | disputed: <one or two sentences, with evidence> |
+```
+
+- **Fix** with one commit per finding (or one per tightly linked group), imperative message,
+  test first if it is a bug. Give the sha of the commit that fixes it. Run
+  `npm run verify:fast` before answering.
+- **Dispute** only with a concrete reason the next reviewer can check (a rule in `CLAUDE.md`,
+  a test, a fact from the CV, Jan's decision). "Out of scope" or "works for me" is not a reason.
+- A cheap nit is fixed; a nit you leave gets `disputed: not worth it now` and goes in the PR
+  body.
+- The next reviewer sees only the table and your responses, never your reasoning, so the
+  commit and the code must speak for themselves. Do not write the review approval marker; the
+  main session does that after a clean loop.
 
 ## Never
 
