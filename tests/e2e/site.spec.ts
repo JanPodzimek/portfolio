@@ -46,6 +46,22 @@ test.describe('Homepage', () => {
         `heights: ${heights}`,
       ).toBeLessThanOrEqual(1);
     });
+
+    test(`${path} keeps certificate link boxes tight around their text`, async ({ page }) => {
+      // Spacing inside the anchor would widen its focus outline and click area past the text.
+      await page.goto(path);
+      const links = page.locator('#credentials').getByRole('link');
+      await expect(links).toHaveCount(2);
+      for (const box of await links.evaluateAll((els) =>
+        els.map((a) => {
+          const range = document.createRange();
+          range.selectNodeContents(a);
+          return { link: a.getBoundingClientRect(), text: range.getBoundingClientRect() };
+        }),
+      )) {
+        expect(box.link.height - box.text.height, JSON.stringify(box)).toBeLessThanOrEqual(1);
+      }
+    });
   }
 
   test('links to working certificate PDFs', async ({ page, request }) => {
