@@ -113,3 +113,140 @@ describe('deploy: release gate', () => {
     expect(deploy).not.toMatch(/only manual merge allowed/);
   });
 });
+
+describe('work skills: local review loop', () => {
+  const workSkills = ['add-content', 'fix-bug', 'new-feature', 'new-tool'].map(
+    (d) => `.claude/skills/${d}/SKILL.md`,
+  );
+  /** The numbered step that starts with **Local review loop.**, without its number. */
+  const loop = (file: string) =>
+    /^\d+\. (\*\*Local review loop\.\*\*[\s\S]*?)(?=^\d+\. )/m.exec(text(file))?.[1] ?? '';
+
+  it.each(workSkills)('%s: has a local review loop step', (file) => {
+    expect(loop(file)).not.toBe('');
+  });
+
+  it('uses the same loop block in every work skill', () => {
+    const [first, ...rest] = workSkills.map(loop);
+    for (const block of rest) expect(block).toBe(first);
+  });
+
+  /** The loop block with each whitespace run as one space, so wrapped phrases still match. */
+  const flatLoop = (file: string) => loop(file).replace(/\s+/g, ' ');
+
+  it.each(workSkills)('%s: starts one new reviewer in round 1 and keeps its id', (file) => {
+    expect(flatLoop(file)).toMatch(/Round 1: a new reviewer\./);
+    expect(flatLoop(file)).toMatch(/`subagent_type: reviewer`/);
+    expect(flatLoop(file)).toMatch(/keep its agent id/);
+    expect(flatLoop(file)).not.toMatch(/new reviewer every round|never resume/i);
+  });
+
+  it.each(workSkills)('%s: resumes the same reviewer with a delta template', (file) => {
+    expect(flatLoop(file)).toMatch(/Rounds 2 and later: the same reviewer\./);
+    expect(flatLoop(file)).toMatch(/SendMessage to that agent id/);
+    expect(loop(file)).toMatch(/Previous Head: <sha>/);
+    expect(loop(file)).toMatch(/New HEAD: <sha>/);
+    expect(flatLoop(file)).toMatch(/never pass the implementer's summary/i);
+  });
+
+  it.each(workSkills)('%s: falls back to a new full-diff reviewer if resuming fails', (file) => {
+    expect(flatLoop(file)).toMatch(/\*\*Fallback\.\*\*/);
+    expect(flatLoop(file)).toMatch(/start a new reviewer with the full-diff template/);
+    expect(flatLoop(file)).toMatch(/previous findings/i);
+  });
+
+  it.each(workSkills)('%s: runs a fresh final gate only when the change is risky', (file) => {
+    const block = flatLoop(file);
+    expect(block).toMatch(/\*\*Final gate, only when risky\.\*\*/);
+    expect(block).toMatch(/a \*\*new\*\* `reviewer`/);
+    // the three triggers
+    expect(block).toMatch(/took 3 or more rounds/);
+    expect(block).toMatch(/accepted a dispute/);
+    expect(block).toContain('`git diff --name-only develop...HEAD`');
+    for (const path of [
+      '.claude/hooks/',
+      '.github/workflows/',
+      '.claude/settings.json',
+      'scripts/',
+      // the files that define the review process itself
+      '.claude/agents/',
+      '.claude/skills/',
+      'CLAUDE.md',
+    ])
+      expect(block).toContain(`\`${path}\``);
+    // what happens to its findings
+    expect(block).toMatch(/no second gate/);
+    expect(block).toMatch(/Its nits go in the PR body/);
+    expect(block).toMatch(/No trigger: the persistent reviewer's approval is final/);
+    expect(block).toMatch(/counts every round, including the final gate/);
+    // a gate that would be round 6, or gate fixes past round 5, stop the loop
+    expect(block).toMatch(/if the gate would be round 6, or its fixes need a round past 5, stop/);
+  });
+
+  it.each(workSkills)(
+    '%s: stops and asks Jan when a finding is upheld after a second dispute',
+    (file) => {
+      expect(flatLoop(file)).toMatch(
+        /upheld after a second dispute[^.]*stop: do not push, and ask Jan/,
+      );
+    },
+  );
+
+  it.each(workSkills)('%s: writes the marker only after the final gate', (file) => {
+    const block = loop(file);
+    expect(block.indexOf('**Approve.**')).toBeGreaterThan(block.indexOf('**Final gate'));
+    expect(flatLoop(file)).toMatch(/only after the final gate passed or was skipped/i);
+  });
+
+  it.each(workSkills)('%s: sends findings back to the same implementer', (file) => {
+    expect(loop(file)).toMatch(/\*\*same\*\* `implementer`/);
+    expect(loop(file)).toMatch(/SendMessage/);
+    expect(loop(file)).toMatch(/`fixed in <sha>`/);
+    expect(loop(file)).toMatch(/`disputed: <reason>`/);
+  });
+
+  it.each(workSkills)('%s: caps the loop at 5 rounds, then asks Jan', (file) => {
+    expect(loop(file)).toMatch(/Cap: 5 rounds/);
+    expect(loop(file)).toMatch(/at most 5/);
+    expect(loop(file)).toMatch(/ask Jan/);
+  });
+
+  it.each(workSkills)('%s: exits only without blocker, major or minor findings', (file) => {
+    expect(loop(file)).toMatch(/no blocker, major or minor finding/);
+    expect(loop(file)).toMatch(/unresolved dispute/);
+    expect(loop(file)).toMatch(/Nits never\s+block/);
+    // an open nit (or a dispute about one) never blocks the exit or reaches the cap
+    expect(loop(file)).toMatch(/every blocker, major or minor\s+previous item\s+closed/);
+    expect(loop(file)).not.toMatch(/every previous\s+item\s+closed/);
+    expect(loop(file)).toMatch(/unresolved dispute on a blocking\s+item/);
+  });
+
+  it.each(workSkills)('%s: writes the approval marker with the Write tool', (file) => {
+    expect(loop(file)).toMatch(/Write tool \(not a shell command\)/);
+    expect(loop(file)).toMatch(/claude-review\/approved/);
+    expect(loop(file)).toMatch(/`git rev-parse HEAD`/);
+    expect(loop(file)).toMatch(/`git rev-parse --absolute-git-dir`/);
+  });
+
+  it.each(workSkills)('%s: pushes and opens the PR only after the loop', (file) => {
+    const body = text(file);
+    const loopAt = body.indexOf('**Local review loop.**');
+    for (const command of ['git push -u origin', 'gh pr create --base develop']) {
+      expect(body.indexOf(command), command).toBeGreaterThan(loopAt);
+    }
+    expect(loop(file)).not.toMatch(/git push|gh pr create/);
+  });
+
+  it.each(workSkills)('%s: no longer stops after two rounds or reviews on the PR', (file) => {
+    expect(text(file)).not.toMatch(/two rounds/i);
+    expect(text(file)).not.toMatch(/`\/review` verdict without blocker\/major/);
+  });
+
+  it.each(workSkills)(
+    '%s: a red-CI fix gets no new round unless src/ behaviour changes',
+    (file) => {
+      expect(text(file)).toMatch(/needs no new review round/);
+      expect(text(file)).toMatch(/unless it changes behaviour under `src\/`/);
+    },
+  );
+});

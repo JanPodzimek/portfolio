@@ -32,6 +32,40 @@ test.describe('Homepage', () => {
       expect(response.ok()).toBe(true);
       expect(response.headers()['content-type']).toContain('pdf');
     });
+
+    test(`${path} shows equally tall credential cards side by side`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop', 'two-column layout only on desktop');
+      await page.goto(path);
+      const cards = page.locator('#credentials').getByRole('listitem');
+      await expect(cards).toHaveCount(4);
+      const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
+      const heights = boxes.map((b) => b.height);
+      expect(
+        Math.max(...heights) - Math.min(...heights),
+        `heights: ${heights}`,
+      ).toBeLessThanOrEqual(1);
+      // DOM order is certifications then education: card i sits next to card i + 2.
+      for (const i of [0, 1]) {
+        expect(Math.abs(boxes[i]!.top - boxes[i + 2]!.top), `row ${i + 1}`).toBeLessThanOrEqual(1);
+        expect(boxes[i]!.left).toBeLessThan(boxes[i + 2]!.left);
+      }
+    });
+
+    test(`${path} keeps certificate link boxes tight around their text`, async ({ page }) => {
+      // Spacing inside the anchor would widen its focus outline and click area past the text.
+      await page.goto(path);
+      const links = page.locator('#credentials').getByRole('link');
+      await expect(links).toHaveCount(2);
+      for (const box of await links.evaluateAll((els) =>
+        els.map((a) => {
+          const range = document.createRange();
+          range.selectNodeContents(a);
+          return { link: a.getBoundingClientRect(), text: range.getBoundingClientRect() };
+        }),
+      )) {
+        expect(box.link.height - box.text.height, JSON.stringify(box)).toBeLessThanOrEqual(1);
+      }
+    });
   }
 
   test('links to working certificate PDFs', async ({ page, request }) => {
