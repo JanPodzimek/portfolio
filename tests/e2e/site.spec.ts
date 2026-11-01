@@ -38,13 +38,17 @@ test.describe('Homepage', () => {
       await page.goto(path);
       const cards = page.locator('#credentials').getByRole('listitem');
       await expect(cards).toHaveCount(4);
-      const heights = await cards.evaluateAll((els) =>
-        els.map((el) => el.getBoundingClientRect().height),
-      );
+      const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
+      const heights = boxes.map((b) => b.height);
       expect(
         Math.max(...heights) - Math.min(...heights),
         `heights: ${heights}`,
       ).toBeLessThanOrEqual(1);
+      // DOM order is certifications then education: card i sits next to card i + 2.
+      for (const i of [0, 1]) {
+        expect(Math.abs(boxes[i]!.top - boxes[i + 2]!.top), `row ${i + 1}`).toBeLessThanOrEqual(1);
+        expect(boxes[i]!.left).toBeLessThan(boxes[i + 2]!.left);
+      }
     });
 
     test(`${path} keeps certificate link boxes tight around their text`, async ({ page }) => {
