@@ -32,6 +32,20 @@ test.describe('Homepage', () => {
       expect(response.ok()).toBe(true);
       expect(response.headers()['content-type']).toContain('pdf');
     });
+
+    test(`${path} shows equally tall credential cards side by side`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop', 'two-column layout only on desktop');
+      await page.goto(path);
+      const cards = page.locator('#credentials').getByRole('listitem');
+      await expect(cards).toHaveCount(4);
+      const heights = await cards.evaluateAll((els) =>
+        els.map((el) => el.getBoundingClientRect().height),
+      );
+      expect(
+        Math.max(...heights) - Math.min(...heights),
+        `heights: ${heights}`,
+      ).toBeLessThanOrEqual(1);
+    });
   }
 
   test('links to working certificate PDFs', async ({ page, request }) => {
